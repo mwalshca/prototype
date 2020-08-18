@@ -134,7 +134,7 @@ public class TradeExecutive {
 		
 		if(stockOrdersById.isEmpty()) { // we don't have orders out there; should we place some?
 			
-		} else { // we have orders out there - let's assess who the latest quote affects us 
+		} else { // we have orders out there - let's assess how the latest quote affects us 
 			
 	    }
 	}
