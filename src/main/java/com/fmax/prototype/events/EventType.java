@@ -1,0 +1,9 @@
+package com.fmax.prototype.events;
+
+public enum EventType {
+	STOCK_QUOTE_RECEIVED,
+	FOREIGN_EXCHANGE_QUOTE_RECEIVED,
+	STOCK_ORDER_PLACED,
+	STOCK_ORDER_ACCEPTED,
+	STOCK_ORDER_FILLED;
+}

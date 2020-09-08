@@ -3,20 +3,20 @@ package com.fmax.prototype.model.trade;
 import java.util.concurrent.ThreadLocalRandom;
 
 import com.fmax.prototype.model.Exchange;
-import com.fmax.prototype.model.Security;
+import com.fmax.prototype.model.Stock;
 
 public abstract class StockOrder {
 	final long id = ThreadLocalRandom.current().nextLong();
 	final StockOrderType type;
 	final Exchange exchange;
-	final Security security;
+	final Stock stock;
 	
 	OrderStatus status = OrderStatus.IN_DESIGN;
 	
-	protected StockOrder(StockOrderType type, Exchange exchange, Security security) {
+	protected StockOrder(StockOrderType type, Exchange exchange, Stock security) {
 		this.type = type;
 		this.exchange = exchange;
-		this.security = security;
+		this.stock = security;
 	}
 
 	public long getId() {
@@ -50,4 +50,10 @@ public abstract class StockOrder {
 		assert OrderStatus.ACCEPTED.equals(status);
 		status = OrderStatus.COMPLETED;
 	}
+
+	@Override
+	public String toString() {
+		return "StockOrder [id=" + id + ", type=" + type + ", exchange=" + exchange + ", stock=" + stock + ", status="
+				+ status + "]";
+	}	
 }

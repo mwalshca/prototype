@@ -1,78 +1,73 @@
 package com.fmax.prototype.model.quote;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fmax.prototype.model.Event;
 import com.fmax.prototype.model.Exchange;
 
-public class StockQuote extends Event {
-	Exchange   exchange;
-	String     symbol;
-	BigDecimal bid;
-	BigDecimal ask;
+public class StockQuote implements IStockQuote {
+	volatile Exchange   exchange;
+	volatile String     symbol;
+	volatile BigDecimal bid;
+	volatile BigDecimal ask;
 	long       sharesAvailable;
 	
 	@JsonFormat(pattern="yyyy-MM-dd HH:mm:ss")
     LocalDateTime dateTime;
    
-	Instant    instantReceived;
+	public StockQuote() {
+	}
 	
+	
+	public StockQuote(
+		Exchange   exchange,
+		String     symbol,
+		BigDecimal bid,
+		BigDecimal ask,
+		long       sharesAvailable,
+		LocalDateTime dateTime){
+		this.ask = ask;
+		this.bid = bid;
+		this.exchange = exchange;
+		this.sharesAvailable = sharesAvailable;
+		this.symbol = symbol;
+		this.dateTime = dateTime;
+		}
+	
+
+	@Override
 	public Exchange getExchange() {
 		return exchange;
 	}
 	
-	public void setExchange(Exchange exchange) {
-		this.exchange = exchange;
-	}
-	
+	@Override
 	public String getSymbol() {
 		return symbol;
 	}
 	
-	public void setSymbol(String symbol) {
-		this.symbol = symbol;
-	}
-	
+	@Override
 	public LocalDateTime getDateTime() {
 		return dateTime;
 	}
 	
-	public void setDateTime(LocalDateTime dateTime) {
-		this.dateTime = dateTime;
-	}
-	
+	@Override
 	public BigDecimal getBid() {
 		return bid;
 	}
 	
-	public void setBid(BigDecimal bid) {
-		this.bid = bid;
-	}
-	
+	@Override
 	public BigDecimal getAsk() {
 		return ask;
 	}
 	
-	public void setAsk(BigDecimal ask) {
-		this.ask = ask;
-	}
-
-	public Instant getInstantReceived() {
-		return instantReceived;
-	}
-
-	public void setInstantReceived(Instant instantReceived) {
-		this.instantReceived = instantReceived;
-	}
-
+	@Override
 	public long getSharesAvailable() {
 		return sharesAvailable;
 	}
 
-	public void setSharesAvailable(long sharesAvailable) {
-		this.sharesAvailable = sharesAvailable;
+	@Override
+	public String toString() {
+		return "StockQuote [exchange=" + exchange + ", symbol=" + symbol + ", bid=" + bid + ", ask=" + ask + "]";
 	}
 }

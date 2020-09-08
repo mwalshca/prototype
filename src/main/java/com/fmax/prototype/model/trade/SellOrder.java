@@ -2,13 +2,13 @@ package com.fmax.prototype.model.trade;
 
 
 import com.fmax.prototype.model.Exchange;
-import com.fmax.prototype.model.Security;
+import com.fmax.prototype.model.Stock;
 
 public class SellOrder extends StockOrder {
 	final int quantityOrdered;
 	
 	
-	public SellOrder(Exchange exchange, Security security, int quantityOrdered) {
+	public SellOrder(Exchange exchange, Stock security, int quantityOrdered) {
 		super(StockOrderType.SELL, exchange, security);
 		this.quantityOrdered = quantityOrdered;
 	}
@@ -17,8 +17,8 @@ public class SellOrder extends StockOrder {
 		this.status = status;
 	}
 
-	public Security getSecurity() {
-		return security;
+	public Stock getSecurity() {
+		return stock;
 	}
 
 	public int getQuantityOrdered() {

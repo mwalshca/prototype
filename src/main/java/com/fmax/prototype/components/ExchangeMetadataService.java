@@ -29,17 +29,17 @@ public class ExchangeMetadataService {
 		static {
 			tsx = new ExchangeMetadata();
 			tsx.setAgressiveExchangeFeePerShare( new BigDecimal("0.003885") );
-			tsx.setPassiveExchangeFeePerShare( new BigDecimal("0.003045") );
+			tsx.setPassiveExchangeFeePerShare( new BigDecimal("-0.003045") );
 			tsx.setTradeCurrency(Currency.getInstance("CAD"));
-			tsx.setRoutedExchangeFeePerShare( new BigDecimal("0.000000") );
+			tsx.setRoutedExchangeFeePerShare( new BigDecimal("0.0026") );
 			tsx.setTradingStartTime( LocalDateTime.now().withHour(8).withMinute(0).withSecond(0).withNano(0));
 			tsx.setTradingStopTime(  LocalDateTime.now().withHour(16).withMinute(0).withSecond(0).withNano(0));
 			
 			nyse = new ExchangeMetadata();
-			nyse.setAgressiveExchangeFeePerShare( new BigDecimal("0.003885") );
-			nyse.setPassiveExchangeFeePerShare( new BigDecimal("0.003045") );
+			nyse.setAgressiveExchangeFeePerShare( new BigDecimal("0.004") );
+			nyse.setPassiveExchangeFeePerShare( new BigDecimal("-0.0015") );
 			nyse.setTradeCurrency(Currency.getInstance("CAD"));
-			nyse.setRoutedExchangeFeePerShare( new BigDecimal("0.000000") );
+			nyse.setRoutedExchangeFeePerShare( new BigDecimal("0.003") );
 			nyse.setTradingStartTime( LocalDateTime.now().withHour(8).withMinute(0).withSecond(0).withNano(0));
 			nyse.setTradingStopTime(  LocalDateTime.now().withHour(16).withMinute(0).withSecond(0).withNano(0));
 		}

@@ -18,7 +18,7 @@ public class ExchangeMetadata {
 	private BigDecimal    passiveExchangeFeePerShare;
 	private BigDecimal    agressiveExchangeFeePerShare;
 	private BigDecimal    routedExchangeFeePerShare;
-	
+
 	//hard-coded logic. At least it's encapsulated
 	public BigDecimal standardTradingPriceIncrement(BigDecimal price) {
 		Objects.requireNonNull(exchange);
