@@ -1,6 +1,7 @@
 package com.fmax.prototype.components;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.Currency;
 import java.util.Objects;
@@ -84,7 +85,8 @@ public class TradeExecutive {
     private final AtomicReference<IForeignExchangeQuote> cadUsCurrencyQuote = new AtomicReference<>();
     private final AtomicReference<IForeignExchangeQuote> usCadCurrencyQuote = new AtomicReference<>();
 	private final ConcurrentHashMap<Long,StockOrder>     stockOrdersById = new ConcurrentHashMap<>();
-	
+	private int   cdnBuySharesOutstanding = 0;
+	private int   sharesHeld = 0; // i.e. our current position
 	
 	public TradeExecutive(TradeGovernor tradeGovernor, 
 			              TradeExecutiveConfiguration tradeExecutiveConfiguration,
@@ -107,6 +109,8 @@ public class TradeExecutive {
 		threadHandleEvents               = new Thread(this::pullEvents,  String.format("TradeExecutive-event-handler-%s", tradeExecutiveConfiguration.getCusip()) );
 		threadPullStockQuotes            = new Thread(this::pullStockQuote, "TradeExecutive-event-handler-stock-quotes");
 		threadPullForeignExchangeQuotes  = new Thread(this::pullForeignExchangeQuotes, "TradeExecutive-event-handler-foreign-exchange-quotes");
+		
+		LOGGER.info( String.format("TradeExecutive initialized. Configuration:\n\t%s\n", tradeExecutiveConfiguration));
 		
 		threadHandleEvents.start();
 		threadPullStockQuotes.start();
@@ -220,16 +224,28 @@ public class TradeExecutive {
 	}
 	
    
+   private static  final MathContext ratioMathContext = new MathContext(2, RoundingMode.DOWN);
+   
 	boolean shouldPlaceBuyOrder() {
-		boolean buyOrdersOutstanding = !stockOrdersById.isEmpty(); //TOOD replace with participation logic
-		boolean enoughDataToTrade =  isEnoughDataToTrade();
-		boolean shouldPlaceBuyOrder = !buyOrdersOutstanding && enoughDataToTrade;
-		
-		
 		CalculationLogRecord blr = new CalculationLogRecord();	
 		blr.setName("shouldPlaceBuyOrder");
-		blr.setVariable("buyOrdersOutstanding.isEmpty()", buyOrdersOutstanding );
-		blr.setVariable("enoughDataToTrade", enoughDataToTrade );
+		
+		boolean shouldPlaceBuyOrder = true; //until proven otherwise
+		
+		boolean enoughDataToTrade =  isEnoughDataToTrade();
+		blr.setVariable("enoughDataToTrade", enoughDataToTrade );		
+		shouldPlaceBuyOrder &= enoughDataToTrade;
+		if( !shouldPlaceBuyOrder) {
+			blr.setResult( shouldPlaceBuyOrder );
+			LOGGER.log(blr);
+			return shouldPlaceBuyOrder;
+		}
+		
+		BigDecimal participation = currentCadParticipationRatio();
+		BigDecimal minCdnPostingRatio = tradeExecutiveConfiguration.getMininumCdnBidPostingRatio();
+		blr.setVariable("currentCadParticipationRatio", participation);
+		blr.setVariable("minCdnPostingRatio", minCdnPostingRatio);
+		shouldPlaceBuyOrder &= participation.compareTo(minCdnPostingRatio) <0;
 		blr.setResult( shouldPlaceBuyOrder );
 		LOGGER.log(blr);
 		
@@ -251,12 +267,16 @@ public class TradeExecutive {
 		
 	    BuyOrder order = new BuyOrder(Exchange.TSE, stock, buyPostingSize, buyPostingPrice); 
 	    order.designed();
+	    
 	    stockOrdersById.put( order.getId(), order);
+	    cdnBuySharesOutstanding += order.getQuantityOrdered();
+	    
 	    orderManagementService.push(order);
 	}
 	
 	
 	private int cadPostingSize() {
+		if()
 		return 10_000; //TODO implement
 	}
 
@@ -299,6 +319,34 @@ public class TradeExecutive {
 		LOGGER.log(blr);
 		
 		return isEnough;
+	}
+	
+	
+	private BigDecimal currentCadParticipationRatio() {
+		BigDecimal result = null;
+		
+		CalculationLogRecord record = new CalculationLogRecord();
+		record.setName("currentCadParticipationRatio");
+		record.setVariable("cdnBuySharesOutstanding", cdnBuySharesOutstanding);
+			
+		if(0 == cdnBuySharesOutstanding) {
+			result = BigDecimal.ZERO.setScale(2);
+			record.setResult(result);
+			LOGGER.log(record);
+			return result;
+		}
+		assert this.cdnBuySharesOutstanding > 0;
+		
+		assert nyseStockQuote.get() !=null;
+		assert nyseStockQuote.get().getBidSize() >= 0;
+		
+		record.setVariable("US bid size", nyseStockQuote.get().getBidSize()) ;
+		result = new BigDecimal(cdnBuySharesOutstanding).divide( new BigDecimal(nyseStockQuote.get().getBidSize()), TradeExecutive.ratioMathContext);
+		
+		record.setResult(result);
+		LOGGER.log(record);
+
+		return result;
 	}
 	
 	
@@ -347,7 +395,7 @@ public class TradeExecutive {
 											  .subtract( netProfitInCA )
 											  .subtract( projectedInitiationCosts )
 											  .subtract( projectedHedgeCosts.multiply(usdCadFxBid) )//TODO should be usd/cad FX Ask 
-											  .setScale(2,  RoundingMode.DOWN); // Down so that reduce the profit margin
+											  .setScale(2,  RoundingMode.DOWN); 
 		return cadPostingPrice;
 	}
 	

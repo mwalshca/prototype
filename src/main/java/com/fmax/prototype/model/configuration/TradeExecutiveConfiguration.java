@@ -18,7 +18,8 @@ public class TradeExecutiveConfiguration {
 	BigDecimal cancelLeewayPerShareCDN;
 	BigDecimal netProfitPerShareUS;
 	BigDecimal cancelLeewayPerShareUS;
-	
+	BigDecimal mininumCdnBidPostingRatio;
+	BigDecimal maxiumCdnBidPostingRatio;
 	
 	public Exchange getBuyStockExchange() {
 		return buyStockExchange;
@@ -75,4 +76,48 @@ public class TradeExecutiveConfiguration {
 	public void setCancelLeewayPerShareCDN(BigDecimal cancelLeewayPerShareCDN) {
 		this.cancelLeewayPerShareCDN = cancelLeewayPerShareCDN;
 	}
+
+	public BigDecimal getNetProfitPerShareUS() {
+		return netProfitPerShareUS;
+	}
+
+	public void setNetProfitPerShareUS(BigDecimal netProfitPerShareUS) {
+		this.netProfitPerShareUS = netProfitPerShareUS;
+	}
+
+	public BigDecimal getCancelLeewayPerShareUS() {
+		return cancelLeewayPerShareUS;
+	}
+
+	public void setCancelLeewayPerShareUS(BigDecimal cancelLeewayPerShareUS) {
+		this.cancelLeewayPerShareUS = cancelLeewayPerShareUS;
+	}
+
+	public BigDecimal getMininumCdnBidPostingRatio() {
+		return mininumCdnBidPostingRatio;
+	}
+
+	public void setMininumCdnBidPostingRatio(BigDecimal mininumCdnBidPostingRatio) {
+		this.mininumCdnBidPostingRatio = mininumCdnBidPostingRatio;
+	}
+
+	public BigDecimal getMaxiumCdnBidPostingRatio() {
+		return maxiumCdnBidPostingRatio;
+	}
+
+	public void setMaxiumCdnBidPostingRatio(BigDecimal maxiumCdnBidPostingRatio) {
+		this.maxiumCdnBidPostingRatio = maxiumCdnBidPostingRatio;
+	}
+
+	@Override
+	public String toString() {
+		return "TradeExecutiveConfiguration [buyStockExchange=" + buyStockExchange + ", sellStockExchange="
+				+ sellStockExchange + ", cusip=" + cusip + ", defaultBidSize=" + defaultBidSize + ", defaultAskSize="
+				+ defaultAskSize + ", netProfitPerShareCDN=" + netProfitPerShareCDN + ", cancelLeewayPerShareCDN="
+				+ cancelLeewayPerShareCDN + ", netProfitPerShareUS=" + netProfitPerShareUS + ", cancelLeewayPerShareUS="
+				+ cancelLeewayPerShareUS + ", mininumCdnBidPostingRatio=" + mininumCdnBidPostingRatio
+				+ ", maxiumCdnBidPostingRatio=" + maxiumCdnBidPostingRatio + "]";
+	}
+
+	
 }

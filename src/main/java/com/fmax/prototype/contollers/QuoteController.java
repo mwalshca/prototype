@@ -47,6 +47,11 @@ public class QuoteController {
 		parameters.setCusip("780087102");
 		parameters.setCancelLeewayPerShareCDN( new BigDecimal("0.0090"));
 		parameters.setNetProfitPerShareCDN( new BigDecimal("0.0098") );
+		parameters.setCancelLeewayPerShareUS(new BigDecimal("0.0080"));
+		parameters.setNetProfitPerShareUS(new BigDecimal("0.012"));
+		parameters.setMininumCdnBidPostingRatio(new BigDecimal("0.40"));
+		parameters.setMaxiumCdnBidPostingRatio(new BigDecimal("0.60"));
+		 
 		return parameters;
 	}
 	

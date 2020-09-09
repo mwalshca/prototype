@@ -11,7 +11,7 @@ public class StockQuote implements IStockQuote {
 	volatile String     symbol;
 	volatile BigDecimal bid;
 	volatile BigDecimal ask;
-	long       sharesAvailable;
+	int                 bidSize;
 	
 	@JsonFormat(pattern="yyyy-MM-dd HH:mm:ss")
     LocalDateTime dateTime;
@@ -25,12 +25,12 @@ public class StockQuote implements IStockQuote {
 		String     symbol,
 		BigDecimal bid,
 		BigDecimal ask,
-		long       sharesAvailable,
+		int        bidSize,
 		LocalDateTime dateTime){
 		this.ask = ask;
 		this.bid = bid;
 		this.exchange = exchange;
-		this.sharesAvailable = sharesAvailable;
+		this.bidSize = bidSize;
 		this.symbol = symbol;
 		this.dateTime = dateTime;
 		}
@@ -62,12 +62,14 @@ public class StockQuote implements IStockQuote {
 	}
 	
 	@Override
-	public long getSharesAvailable() {
-		return sharesAvailable;
+	public int getBidSize() {
+		return bidSize;
 	}
+
 
 	@Override
 	public String toString() {
-		return "StockQuote [exchange=" + exchange + ", symbol=" + symbol + ", bid=" + bid + ", ask=" + ask + "]";
+		return "StockQuote [exchange=" + exchange + ", symbol=" + symbol + ", bid=" + bid + ", ask=" + ask
+				+ ", bidSize=" + bidSize + ", dateTime=" + dateTime + "]";
 	}
 }
