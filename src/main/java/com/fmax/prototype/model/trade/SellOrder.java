@@ -44,4 +44,10 @@ public class SellOrder extends StockOrder {
 		assert OrderStatus.ACCEPTED.equals(status);
 		status = OrderStatus.COMPLETED;
 	}
+
+	@Override
+	public String toString() {
+		return "SellOrder [quantityOrdered=" + quantityOrdered + ", id=" + id + ", type=" + type + ", exchange="
+				+ exchange + ", stock=" + stock + ", status=" + status + "]";
+	}
 }

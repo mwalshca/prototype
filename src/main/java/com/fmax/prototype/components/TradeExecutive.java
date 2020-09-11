@@ -36,6 +36,11 @@ import com.fmax.prototype.model.trade.StockOrder;
 public class TradeExecutive {
 	private static final Currency CAD_CURRENCY = Currency.getInstance("CAD");
 	private static final Currency US_CURRENCY = Currency.getInstance("USD");
+	
+	private static final MathContext MATH_CONTEXT_RATIO = new MathContext(2, RoundingMode.DOWN);
+	private static final MathContext MATH_CONTEXT_WHOLE_NUMBER_ROUND_DOWN = new MathContext(0, RoundingMode.DOWN);
+	private static final BigDecimal TWO = new BigDecimal("2.00");
+	
 	private static final AsyncLogger            LOGGER;
 	
 	static {
@@ -78,6 +83,8 @@ public class TradeExecutive {
     final Stock    stock;
     final Exchange buyExchange;  // TODO make the code able to switch the buy and sell exchanges if the market changes   
     final Exchange sellExchange; 
+    final BigDecimal cdnAveragePostingRatio;
+    
     
     //state we care about and need to replicate:
     private final AtomicReference<IStockQuote> 			 nyseStockQuote = new AtomicReference<>();
@@ -103,6 +110,17 @@ public class TradeExecutive {
 		buyExchange = tradeExecutiveConfiguration.getBuyStockExchange();
 		sellExchange = tradeExecutiveConfiguration.getSellStockExchange();
 		
+		cdnAveragePostingRatio = tradeExecutiveConfiguration.getMininumCdnBidPostingRatio()
+				                 .add( tradeExecutiveConfiguration.getMaxiumCdnBidPostingRatio())
+				                 .divide(TWO, TradeExecutive.MATH_CONTEXT_RATIO);
+		
+		CalculationLogRecord record = new CalculationLogRecord();
+		record.setName("cdnAveragePostingRatio");
+		record.setVariable("tradeExecutiveConfiguration.getMininumCdnBidPostingRatio()", tradeExecutiveConfiguration.getMininumCdnBidPostingRatio());
+		record.setVariable("tradeExecutiveConfiguration.getMaxiumCdnBidPostingRatio",  tradeExecutiveConfiguration.getMaxiumCdnBidPostingRatio());
+		record.setResult( cdnAveragePostingRatio);
+		LOGGER.log(record);
+					
 		tsxMetadata = exchangeMetadataService.get(Exchange.TSE);
 		nyseMetadata = exchangeMetadataService.get(Exchange.NYSE );
 		
@@ -224,7 +242,6 @@ public class TradeExecutive {
 	}
 	
    
-   private static  final MathContext ratioMathContext = new MathContext(2, RoundingMode.DOWN);
    
 	boolean shouldPlaceBuyOrder() {
 		CalculationLogRecord blr = new CalculationLogRecord();	
@@ -234,7 +251,9 @@ public class TradeExecutive {
 		
 		boolean enoughDataToTrade =  isEnoughDataToTrade();
 		blr.setVariable("enoughDataToTrade", enoughDataToTrade );		
+		
 		shouldPlaceBuyOrder &= enoughDataToTrade;
+		
 		if( !shouldPlaceBuyOrder) {
 			blr.setResult( shouldPlaceBuyOrder );
 			LOGGER.log(blr);
@@ -245,7 +264,9 @@ public class TradeExecutive {
 		BigDecimal minCdnPostingRatio = tradeExecutiveConfiguration.getMininumCdnBidPostingRatio();
 		blr.setVariable("currentCadParticipationRatio", participation);
 		blr.setVariable("minCdnPostingRatio", minCdnPostingRatio);
+		
 		shouldPlaceBuyOrder &= participation.compareTo(minCdnPostingRatio) <0;
+		
 		blr.setResult( shouldPlaceBuyOrder );
 		LOGGER.log(blr);
 		
@@ -276,8 +297,19 @@ public class TradeExecutive {
 	
 	
 	private int cadPostingSize() {
-		if()
-		return 10_000; //TODO implement
+		BigDecimal usBestBidSize = new BigDecimal( this.nyseStockQuote.get().getBidSize());
+		int cadPostingSize = cdnAveragePostingRatio.multiply(usBestBidSize, MATH_CONTEXT_WHOLE_NUMBER_ROUND_DOWN).intValue();
+		
+		//Initial posting size = Rounddown((minimum posting percentage + maximum posting percentage)/2 * US best bid size)
+		CalculationLogRecord record = new CalculationLogRecord();
+		record.setName("cadPostingSize");
+		record.setVariable("usBestBidSize", usBestBidSize);
+		record.setVariable("cdnAveragePostingRatio", cdnAveragePostingRatio);
+		record.setResult( cadPostingSize );
+		LOGGER.log(record);
+		
+		
+		return cadPostingSize; //TODO implement
 	}
 
 	
@@ -341,7 +373,7 @@ public class TradeExecutive {
 		assert nyseStockQuote.get().getBidSize() >= 0;
 		
 		record.setVariable("US bid size", nyseStockQuote.get().getBidSize()) ;
-		result = new BigDecimal(cdnBuySharesOutstanding).divide( new BigDecimal(nyseStockQuote.get().getBidSize()), TradeExecutive.ratioMathContext);
+		result = new BigDecimal(cdnBuySharesOutstanding).divide( new BigDecimal(nyseStockQuote.get().getBidSize()), TradeExecutive.MATH_CONTEXT_RATIO);
 		
 		record.setResult(result);
 		LOGGER.log(record);

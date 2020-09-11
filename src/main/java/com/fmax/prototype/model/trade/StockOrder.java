@@ -31,6 +31,18 @@ public abstract class StockOrder {
 		return status;
 	}
 
+	public Exchange getExchange() {
+		return exchange;
+	}
+
+	public Stock getStock() {
+		return stock;
+	}
+
+	public void setStatus(OrderStatus status) {
+		this.status = status;
+	}
+
 	public void designed() {
 		assert OrderStatus.IN_DESIGN.equals(status);
 		status = OrderStatus.TO_BE_PLACED;
