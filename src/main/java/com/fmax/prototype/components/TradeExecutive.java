@@ -397,6 +397,7 @@ public class TradeExecutive {
 				                               .subtract( projectedInitiationCosts )
 				                               .subtract( projectedHedgeCosts.multiply(usdCadFxBid) ) //TODO should be usd/cad FX Ask 
 		 									   .setScale(2,  RoundingMode.DOWN);
+		
 		CalculationLogRecord record = new CalculationLogRecord();
 		record.setName("CA passive posting price");
 		record.setVariable("usBestBid", usBestBid);
@@ -405,7 +406,7 @@ public class TradeExecutive {
 		record.setVariable("canadianPassiveEchangeFee", canadianPassiveEchangeFee);
 		record.setVariable("canadianRSFee", canadianRSFee);
 		record.setVariable("projectedInitiationCosts", projectedInitiationCosts);
-		record.setVariable("projectedHedgeCosts", null);
+		record.setVariable("projectedHedgeCosts", projectedHedgeCosts);
 		record.setResult(cadPostingPrice);
 		LOGGER.log(record);
 		
@@ -422,12 +423,27 @@ public class TradeExecutive {
 		BigDecimal projectedInitiationCosts = canadianAggressiveEchangeFee.add(canadianRSFee);
 		BigDecimal projectedHedgeCosts = this.nyseMetadata.getAgressiveExchangeFeePerShare(); //TODO add SEC fee
 		
+		
 		//CA posting price = round down to nearest tick (US best bid * USD/CAD FX bid - (Net profit in CA + Projected initiation costs + (Projected hedge costs * USD/CAD FX ask)))
 		BigDecimal cadPostingPrice = usBestBid.multiply( usdCadFxBid )
 											  .subtract( netProfitInCA )
 											  .subtract( projectedInitiationCosts )
 											  .subtract( projectedHedgeCosts.multiply(usdCadFxBid) )//TODO should be usd/cad FX Ask 
 											  .setScale(2,  RoundingMode.DOWN); 
+		
+
+		CalculationLogRecord record = new CalculationLogRecord();
+		record.setName("CA agressive posting price");
+		record.setVariable("usBestBid", usBestBid);
+		record.setVariable("usdCadFxBid", usdCadFxBid);
+		record.setVariable("netProfitInCA", netProfitInCA);
+		record.setVariable("canadianAggressiveEchangeFee", canadianAggressiveEchangeFee);
+		record.setVariable("canadianRSFee", canadianRSFee);
+		record.setVariable("projectedInitiationCosts", projectedInitiationCosts);
+		record.setVariable("projectedHedgeCosts", projectedHedgeCosts);
+		record.setResult(cadPostingPrice);
+		LOGGER.log(record);
+		
 		return cadPostingPrice;
 	}
 	
