@@ -15,6 +15,6 @@ public class StockOrderAccepted extends Event {
 
 	@Override
 	public String toString() {
-		return "StockOrderPlaced [orderId=" + orderId + "]";
+		return "StockOrderAccepted [orderId=" + orderId + ", eventType=" + eventType + "]";
 	}
 }

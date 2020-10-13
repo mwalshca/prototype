@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fmax.prototype.components.ExchangeMetadataService;
 import com.fmax.prototype.components.SecuritiesMasterService;
+import com.fmax.prototype.components.TradeCalculationService;
 import com.fmax.prototype.components.TradeExecutive;
 import com.fmax.prototype.components.TradeGovernor;
 import com.fmax.prototype.model.Exchange;
@@ -28,6 +29,7 @@ import com.fmax.prototype.model.quote.StockQuote;
 public class QuoteController {
 	@Autowired ExchangeMetadataService exchangeMetadataService;
 	@Autowired SecuritiesMasterService  securitiesMasterService;
+	@Autowired TradeCalculationService tradeCalculationService;
 	
 	TradeGovernor tradeMonitor = new TradeGovernor();
 	TradeExecutiveConfiguration rbcParameters = initRBCParameters();
@@ -36,7 +38,7 @@ public class QuoteController {
 
 	@PostConstruct 
 	private void initialize() {
-		rbcTradeExecutive = new TradeExecutive(tradeMonitor, rbcParameters, exchangeMetadataService, securitiesMasterService) ;	
+		rbcTradeExecutive = new TradeExecutive(tradeMonitor, rbcParameters, exchangeMetadataService, securitiesMasterService, tradeCalculationService) ;	
 	}
 	
 	protected TradeExecutiveConfiguration initRBCParameters() {

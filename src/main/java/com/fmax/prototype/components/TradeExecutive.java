@@ -20,6 +20,8 @@ import com.fmax.prototype.common.CalculationLogRecord;
 import com.fmax.prototype.events.Event;
 import com.fmax.prototype.events.ForeignExchangeQuoteReceived;
 import com.fmax.prototype.events.StockOrderAccepted;
+import com.fmax.prototype.events.StockOrderCompleted;
+import com.fmax.prototype.events.StockOrderFilled;
 import com.fmax.prototype.events.StockOrderPlaced;
 import com.fmax.prototype.events.StockQuoteReceived;
 import com.fmax.prototype.model.Exchange;
@@ -66,6 +68,7 @@ public class TradeExecutive {
 	    
 	private final OrderManagementService        orderManagementService = new OrderManagementService(this);
 	private final SecuritiesMasterService       securitiesMasterService;
+	private final TradeCalculationService       tradeCalculationService;
 	
 	//Queue and thread to receive stock quotes
 	private final SynchronousQueue<IStockQuote> stockQuotesMessageQueue = new SynchronousQueue<>();
@@ -89,7 +92,6 @@ public class TradeExecutive {
     //state we care about and need to replicate:
     private final AtomicReference<IStockQuote> 			 nyseStockQuote = new AtomicReference<>();
     private final AtomicReference<IStockQuote> 			 tseStockQuote = new AtomicReference<>();
-    private final AtomicReference<IForeignExchangeQuote> cadUsCurrencyQuote = new AtomicReference<>();
     private final AtomicReference<IForeignExchangeQuote> usCadCurrencyQuote = new AtomicReference<>();
 	private final ConcurrentHashMap<Long,StockOrder>     stockOrdersById = new ConcurrentHashMap<>();
 	private int   cdnBuySharesOutstanding = 0;
@@ -98,11 +100,13 @@ public class TradeExecutive {
 	public TradeExecutive(TradeGovernor tradeGovernor, 
 			              TradeExecutiveConfiguration tradeExecutiveConfiguration,
 			              ExchangeMetadataService exchangeMetadataService,
-			              SecuritiesMasterService securitiesMasterService) 
+			              SecuritiesMasterService securitiesMasterService,
+			              TradeCalculationService tradeCalculationService) 
 	{
 		this.tradeGovernor = tradeGovernor;
 		this.tradeExecutiveConfiguration = tradeExecutiveConfiguration;
 		this.securitiesMasterService = securitiesMasterService;
+		this.tradeCalculationService = tradeCalculationService;
 		
 		stock = this.securitiesMasterService.getStock( tradeExecutiveConfiguration.getCusip() );
 		assert stock != null; // TODO fatal error
@@ -162,17 +166,27 @@ public class TradeExecutive {
 					handle( (StockOrderPlaced) event);
 					break;
 					
+				case STOCK_ORDER_ACCEPTED:
+					assert event instanceof StockOrderAccepted;
+					handle( (StockOrderAccepted) event);
+					break;
+					
 				case STOCK_ORDER_FILLED:
+					assert event instanceof StockOrderFilled;
+					handle( (StockOrderFilled) event);
 					break;
 				
+				case STOCK_ORDER_COMPLETED:
+					assert event instanceof StockOrderCompleted;
+					handle( (StockOrderCompleted) event);
 				default:
 					break; // TODO log unsupported event
-
 				}
 				LOGGER.info(String.format("\nEnd processing event:%s\n----------------------------\n\n",event.getEventType()) );
 			} catch (InterruptedException e) {
 				Thread.interrupted(); // reset the thread's interupted flag
 			} catch (RuntimeException ex) {
+				System.out.println("Danger Will Robinson!");
 			}
 		}
 	}
@@ -180,20 +194,31 @@ public class TradeExecutive {
 	
 	private void handle(StockQuoteReceived event) {
 		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
-		
-		//TODO BR
+
 		IStockQuote stockQuote = event.getStockQuote();
 		if(stockQuote.getExchange().equals(Exchange.TSE)) {
 			//TODO BR-0004
 			// TODO verify correct stock
 			tseStockQuote.set(stockQuote);
+			conditionallyPlaceBuyOrder();
 		} else if(stockQuote.getExchange().equals(Exchange.NYSE)) {
 			//TODO BR-0005
 			// Verify correct stock quote
 			nyseStockQuote.set(stockQuote);
+			conditionallyPlaceBuyOrder();
 		}
-		conditionallyPlaceBuyOrder();
+		
+		//TODO for SIMULATOR only - remove later
+		orderManagementService.push(stockQuote);
 	}
+	
+	private void handleHedgePriceChanged() {
+		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread	
+		
+	}
+	
+	
+	
 	
 	
 	private void handle(ForeignExchangeQuoteReceived event) {
@@ -205,7 +230,7 @@ public class TradeExecutive {
 			 && US_CURRENCY.equals( quote.getQuoteCurrency() )
 		) 
 		{
-			cadUsCurrencyQuote.set(quote);
+			// TODO right now, do nothing
 		}
 		else if(    US_CURRENCY.equals(quote.getBaseCurrency()) 
 				 && CAD_CURRENCY.equals( quote.getQuoteCurrency() )
@@ -223,61 +248,108 @@ public class TradeExecutive {
 		
 		if(null==order) {
 			//TODO alarm
+			return;
 		}
 		assert order != null;
 		order.placed();
 		
-		LOGGER.info( String.format("Stock order placed:%s", order.toString()));
+		LOGGER.info( String.format("Stock order placed: %s", order.toString()));
 		
 	}
 	
 	
-   private  void conditionallyPlaceBuyOrder() {
-		if(shouldPlaceBuyOrder()) {
+	private void handle(StockOrderAccepted event) {
+		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
+		long id = event.getOrderId();
+		StockOrder order = stockOrdersById.get(id);
+		
+		if(null==order) {
+			//TODO alarm
+			return;
+		}
+		assert order != null;
+		order.accepted();
+		
+		LOGGER.info( String.format("Stock order accepted: %s", order.toString()));
+		
+	}
+	
+	
+	private void handle(StockOrderFilled event) {
+		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
+		long id = event.getOrderId();
+		StockOrder order = stockOrdersById.get(id);
+		
+		if(null==order) {
+			//TODO alarm
+		}
+		assert order != null;
+		
+		cdnBuySharesOutstanding -= event.getnFilled();; //TODO check the math
+		sharesHeld += event.getnFilled();
+		//TODO initiate or add hedge
+		
+		LOGGER.info( String.format("Stock order filled order id:%d # of shares filled: %d. Number of shares remaining:%d", order.getId(), event.getnFilled(), cdnBuySharesOutstanding ));	
+	}
+
+	
+	private void handle(StockOrderCompleted event) {
+		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
+		long id = event.getOrderId();
+		StockOrder order = stockOrdersById.get(id);
+		
+		if(null==order) {
+			//TODO alarm
+		}
+		assert order != null;
+		
+		stockOrdersById.remove( id );
+		LOGGER.info( String.format("Stock order completed. Order: %s", order));	
+	}
+	
+	
+	private void conditionallyPlaceBuyOrder() {
+		if (shouldPlaceBuyOrder()) {
 			LOGGER.info("Decision: place buy order.");
 			placeBuyOrder();
-		}
-		else 
+		} else
 			LOGGER.info("Decision: do not place buy order.");
 	}
 	
    
-   
+	
+
+	
 	boolean shouldPlaceBuyOrder() {
-		CalculationLogRecord blr = new CalculationLogRecord();	
+		CalculationLogRecord blr = new CalculationLogRecord();
 		blr.setName("shouldPlaceBuyOrder");
-		
-		boolean shouldPlaceBuyOrder = true; //until proven otherwise
-		
-		boolean enoughDataToTrade =  isEnoughDataToTrade();
-		blr.setVariable("enoughDataToTrade", enoughDataToTrade );		
-		
+
+		boolean shouldPlaceBuyOrder = true; // until proven otherwise
+
+		boolean enoughDataToTrade = isEnoughDataToTrade();
+		blr.setVariable("enoughDataToTrade", enoughDataToTrade);
+
 		shouldPlaceBuyOrder &= enoughDataToTrade;
-		
-		if( !shouldPlaceBuyOrder) {
-			blr.setResult( shouldPlaceBuyOrder );
+
+		if (!shouldPlaceBuyOrder) {
+			blr.setResult(shouldPlaceBuyOrder);
 			LOGGER.log(blr);
 			return shouldPlaceBuyOrder;
 		}
-		
+
 		BigDecimal participation = currentCadParticipationRatio();
 		BigDecimal minCdnPostingRatio = tradeExecutiveConfiguration.getMininumCdnBidPostingRatio();
 		blr.setVariable("currentCadParticipationRatio", participation);
 		blr.setVariable("minCdnPostingRatio", minCdnPostingRatio);
-		
-		shouldPlaceBuyOrder &= participation.compareTo(minCdnPostingRatio) <0;
-		
-		blr.setResult( shouldPlaceBuyOrder );
+
+		shouldPlaceBuyOrder &= participation.compareTo(minCdnPostingRatio) < 0;
+
+		blr.setResult(shouldPlaceBuyOrder);
 		LOGGER.log(blr);
-		
+
 		return shouldPlaceBuyOrder;
 	}
-	
-	
-	boolean cancelUnprofitableOrders() {
-		return false;
-	}
-	
+
 	
 	private void placeBuyOrder() {
 		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread	 
@@ -340,12 +412,12 @@ public class TradeExecutive {
 		blr.setName("isEnoughDataToTrade");
 		blr.setVariable("tseStockQuote", tseStockQuote.get() );
 		blr.setVariable("nyseStockQuote", nyseStockQuote.get() );
-		blr.setVariable("cadUsCurrencyQuote", cadUsCurrencyQuote.get() );
+		blr.setVariable("usCadCurrencyQuote", usCadCurrencyQuote.get() );
 		
 		boolean isEnough = 
 				   tseStockQuote.get() != null
 				&& nyseStockQuote.get() != null
-				&& cadUsCurrencyQuote.get() != null;
+				&& usCadCurrencyQuote.get() != null;
 		
 		blr.setResult( isEnough );
 		LOGGER.log(blr);
@@ -381,10 +453,10 @@ public class TradeExecutive {
 		return result;
 	}
 	
-	
+
 	protected BigDecimal cadPassivePostingPrice() {
 		BigDecimal usBestBid = this.nyseStockQuote.get().getBid();
-		BigDecimal usdCadFxBid = this.cadUsCurrencyQuote.get().getBid();
+		BigDecimal usdCadFxBid = this.usCadCurrencyQuote.get().getBid();
 		BigDecimal netProfitInCA = this.tradeExecutiveConfiguration.getNetProfitPerShareCDN();
 		BigDecimal canadianPassiveEchangeFee = this.tsxMetadata.getPassiveExchangeFeePerShare();
 		BigDecimal canadianRSFee = this.tsxMetadata.getRoutedExchangeFeePerShare();
@@ -395,7 +467,7 @@ public class TradeExecutive {
 		BigDecimal cadPostingPrice =  usBestBid.multiply( usdCadFxBid )
 											   .subtract( netProfitInCA )
 				                               .subtract( projectedInitiationCosts )
-				                               .subtract( projectedHedgeCosts.multiply(usdCadFxBid) ) //TODO should be usd/cad FX Ask 
+				                               .subtract( projectedHedgeCosts.multiply(usdCadFxBid) )                                                            
 		 									   .setScale(2,  RoundingMode.DOWN);
 		
 		CalculationLogRecord record = new CalculationLogRecord();
@@ -416,7 +488,7 @@ public class TradeExecutive {
 	
 	protected BigDecimal cadAggressivePostingPrice() {
 		BigDecimal usBestBid = this.nyseStockQuote.get().getBid();
-		BigDecimal usdCadFxBid = this.cadUsCurrencyQuote.get().getBid();
+		BigDecimal usdCadFxBid = this.usCadCurrencyQuote.get().getBid();
 		BigDecimal netProfitInCA = this.tradeExecutiveConfiguration.getNetProfitPerShareCDN();
 		BigDecimal canadianAggressiveEchangeFee = this.tsxMetadata.getAgressiveExchangeFeePerShare();
 		BigDecimal canadianRSFee = this.tsxMetadata.getRoutedExchangeFeePerShare();
@@ -535,12 +607,30 @@ public class TradeExecutive {
 		}
 	}
 	
-	/** threadsafe, , blocking */
+	/** threadsafe,  blocking */
 	public void pushOrderPlaced(long orderId) {
 		boolean put = false;
 		do {
 			try {
 				StockOrderPlaced event = new StockOrderPlaced(orderId);
+				events.put(event);
+				put = true;
+			} catch (InterruptedException e) {
+				Thread.interrupted(); // reset the interrupted flag
+			} catch (RuntimeException ex) {
+				// for now, do nothing
+				// TODO log?
+			}
+		} while (!put);	
+	}
+	
+
+	/** threadsafe,  blocking */
+	public void pushOrderCompleted(long orderId) {
+		boolean put = false;
+		do {
+			try {
+				StockOrderCompleted event = new StockOrderCompleted(orderId);
 				events.put(event);
 				put = true;
 			} catch (InterruptedException e) {
@@ -558,6 +648,22 @@ public class TradeExecutive {
 		do {
 			try {
 				StockOrderAccepted event = new StockOrderAccepted(orderId);
+				events.put(event);
+				put = true;
+			} catch (InterruptedException e) {
+				Thread.interrupted(); // reset the interrupted flag
+			} catch (RuntimeException ex) {
+				// for now, do nothing
+				// TODO log?
+			}
+		} while (!put);	
+	}
+	
+	public void pushOrderFilled(long orderId, int unitsFilled) {
+		boolean put = false;
+		do {
+			try {
+				StockOrderFilled event = new StockOrderFilled(orderId, unitsFilled);
 				events.put(event);
 				put = true;
 			} catch (InterruptedException e) {
