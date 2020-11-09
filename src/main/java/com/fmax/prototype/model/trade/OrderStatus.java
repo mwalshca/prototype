@@ -5,5 +5,5 @@ public enum OrderStatus {
 	TO_BE_PLACED,
 	PLACED,
 	ACCEPTED,
-	COMPLETED; //TODO handle cancel scenarioß
+	COMPLETED; //TODO handle cancel scenario
 }

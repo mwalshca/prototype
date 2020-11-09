@@ -5,10 +5,6 @@ import java.util.logging.LogRecord;
 
 public class BusinessLogRecordFormattter extends Formatter {
 
-	public BusinessLogRecordFormattter() {
-		// TODO Auto-generated constructor stub
-	}
-
 	@Override
 	public String format(LogRecord record) {
 		if(record instanceof CalculationLogRecord)

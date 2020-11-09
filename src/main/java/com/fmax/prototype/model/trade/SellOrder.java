@@ -57,6 +57,4 @@ public class SellOrder extends StockOrder {
 		return "SellOrder [quantityOrdered=" + quantityOrdered + ", postingPrice=" + postingPrice + ", id=" + id
 				+ ", type=" + type + ", exchange=" + exchange + ", stock=" + stock + ", status=" + status + "]";
 	}
-
-	
 }

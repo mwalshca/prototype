@@ -67,5 +67,5 @@ public abstract class StockOrder {
 	public String toString() {
 		return "StockOrder [id=" + id + ", type=" + type + ", exchange=" + exchange + ", stock=" + stock + ", status="
 				+ status + "]";
-	}	
+	}
 }

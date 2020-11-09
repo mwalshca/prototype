@@ -20,6 +20,7 @@ public class TradeExecutiveConfiguration {
 	BigDecimal cancelLeewayPerShareUS;
 	BigDecimal mininumCdnBidPostingRatio;
 	BigDecimal maxiumCdnBidPostingRatio;
+	BigDecimal stopLossAmount;
 	
 	public Exchange getBuyStockExchange() {
 		return buyStockExchange;
@@ -109,6 +110,14 @@ public class TradeExecutiveConfiguration {
 		this.maxiumCdnBidPostingRatio = maxiumCdnBidPostingRatio;
 	}
 
+	public BigDecimal getStopLossAmount() {
+		return stopLossAmount;
+	}
+
+	public void setStopLossAmount(BigDecimal stopLossAmount) {
+		this.stopLossAmount = stopLossAmount;
+	}
+
 	@Override
 	public String toString() {
 		return "TradeExecutiveConfiguration [buyStockExchange=" + buyStockExchange + ", sellStockExchange="
@@ -116,8 +125,10 @@ public class TradeExecutiveConfiguration {
 				+ defaultAskSize + ", netProfitPerShareCDN=" + netProfitPerShareCDN + ", cancelLeewayPerShareCDN="
 				+ cancelLeewayPerShareCDN + ", netProfitPerShareUS=" + netProfitPerShareUS + ", cancelLeewayPerShareUS="
 				+ cancelLeewayPerShareUS + ", mininumCdnBidPostingRatio=" + mininumCdnBidPostingRatio
-				+ ", maxiumCdnBidPostingRatio=" + maxiumCdnBidPostingRatio + "]";
+				+ ", maxiumCdnBidPostingRatio=" + maxiumCdnBidPostingRatio + ", stopLossAmount=" + stopLossAmount + "]";
 	}
+
+	
 
 	
 }
