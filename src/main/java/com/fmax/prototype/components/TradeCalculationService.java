@@ -3,8 +3,11 @@ package com.fmax.prototype.components;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+import org.springframework.stereotype.Service;
+
 import com.fmax.prototype.common.CalculationLogRecord;
 
+@Service
 public class TradeCalculationService {
 
 //	CA cancel price = round down to nearest tick (US best bid * USD/CAD FX bid - (Cancel leeway in CA + Projected initiation costs + (Projected hedge costs * USD/CAD FX ask)))

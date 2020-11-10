@@ -293,12 +293,12 @@ public class TradeExecutive {
 		assert trade == activeTrade;
 		
 		if(order.getExchange().equals(buyExchange)) {
-			LOGGER.info( String.format("Buy stock order filled order id:%d # of shares filled: %d"));	
+			LOGGER.info( String.format("Buy stock order filled order id:%d # of shares filled: %d", event.getOrderId(),event.getnFilled() ));	
 			trade.buyFilled(event.getnFilled());
 			placeHedgeOrder( trade, event.getnFilled());
 		} 
 		else if(order.getExchange().equals(sellExchange)) {
-			LOGGER.info( String.format("Hedge  stock order filled order id:%d # of shares filled: %d"));	
+			LOGGER.info( String.format("Hedge  stock order filled order id:%d # of shares filled: %d", event.getOrderId(),event.getnFilled() ));	
 			trade.hedgeFilled(event.getnFilled());
 			if( trade.isComplete() ) {
 				LOGGER.info( String.format("Trade completed:%s", trade) );
@@ -396,12 +396,13 @@ public class TradeExecutive {
 	
 	
 	
-	private void placeHedgeOrder(Trade strategy, int nShares) {
+	private void placeHedgeOrder(Trade trade, int nShares) {
 		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
 		
 		SellOrder hedgeOrder = new SellOrder( sellExchange, stock, nShares, nyseStockQuote.get().getBid());
 		hedgeOrder.designed();
 		stockOrdersById.put( hedgeOrder.getId(), hedgeOrder);
+		this.tradesByStockOrderId.put(hedgeOrder.getId(), trade);
 		this.orderManagementService.push(hedgeOrder);
 	}
 	
@@ -440,6 +441,7 @@ public class TradeExecutive {
 			final BigDecimal aggressivePostingPrice = this.cadAggressivePostingPrice();
 			record.setVariable("aggressivePostingPrice", aggressivePostingPrice);
 			record.setVariable("tseStockQuote", tseStockQuote);
+			record.setResult(passivePostingPrice);
 			LOGGER.log(record);
 			return aggressivePostingPrice;
 		}
