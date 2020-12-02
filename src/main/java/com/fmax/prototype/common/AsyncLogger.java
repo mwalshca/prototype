@@ -9,7 +9,7 @@ import java.util.logging.Logger;
 public class AsyncLogger {
 	private LinkedBlockingQueue<LogRecord> records = new LinkedBlockingQueue<>();
 	private Logger logger;
-	private Thread logLoopThread = new Thread( this::logLoop, "AsyncLoggerLoggingThread");
+	private Thread logLoopThread = new Thread( this::logLoop );
 	
 	public AsyncLogger(Logger logger) {
 		Objects.requireNonNull(logger);

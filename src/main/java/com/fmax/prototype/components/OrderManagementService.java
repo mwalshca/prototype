@@ -87,7 +87,7 @@ public class OrderManagementService {
 					tradeExecutive.pushOrderCompleted( order.getId() );
 				}
 			}
-			buyOrders.removeAll(toBeRemoved);
+			buyOrders.removeAll( toBeRemoved) ;
 			break;
 			
 		case NYSE:
@@ -95,13 +95,13 @@ public class OrderManagementService {
 			List<SellOrder> sellsToBeRemoved = new ArrayList<SellOrder>();
 			for(SellOrder order:sellOrders) {
 				assert quote.getBid() !=  null;
-				if( quote.getAsk().compareTo(order.getPostingPrice()) >= 0)  { //bid greater than or equal to our ask, so fill it!
+				if( quote.getBid().compareTo(order.getPostingPrice()) >= 0)  { //bid greater than or equal to our ask, so fill it!
 					sellsToBeRemoved.add(order);
 					tradeExecutive.pushOrderFilled( order.getId(), order.getQuantityOrdered() ); //hard-coded - one fill, with quanity equal to quantity ordered
 					tradeExecutive.pushOrderCompleted( order.getId() );
 				}
 			}
-			sellOrders.removeAll(sellsToBeRemoved);
+			sellOrders.removeAll( sellsToBeRemoved) ;
 			break;
 			
 		}

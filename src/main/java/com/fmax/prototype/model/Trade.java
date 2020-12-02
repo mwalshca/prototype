@@ -1,9 +1,6 @@
-package com.fmax.prototype.components;
+package com.fmax.prototype.model;
 
 import java.math.BigDecimal;
-
-import com.fmax.prototype.model.Exchange;
-import com.fmax.prototype.model.Stock;
 
 public class Trade {
 	final Exchange   buyExchange;
@@ -11,11 +8,11 @@ public class Trade {
 	final Stock      stock;
 	
 	final BigDecimal buyPostingPrice;
-	final BigDecimal reflexPrice; //a.k.a. the hedge price
-	final BigDecimal cancelPrice;
 	final int        buyPostingSize;
 	
-
+	final BigDecimal reflexPrice; //a.k.a. the hedge price
+	final BigDecimal cancelPrice;
+	
 	int   sharesBought;
 	int   sharesSold;
 	int   sharesHeld;
@@ -58,7 +55,7 @@ public class Trade {
 	
 	
 	public boolean isComplete() {
-		return buyPostingSize == sharesSold;
+		return 0 == sharesHeld;
 	}
 	
 	
@@ -74,35 +71,22 @@ public class Trade {
 		
 	}
 
+	
 	public int getSharesBought() {
 		return sharesBought;
 	}
 
-
-	public void setSharesBought(int sharesBought) {
-		this.sharesBought = sharesBought;
-	}
-
-
+	
 	public int getSharesSold() {
 		return sharesSold;
 	}
 
-	public void setSharesSold(int sharesSold) {
-		this.sharesSold = sharesSold;
-	}
-
-
+	
 	public int getSharesHeld() {
 		return sharesHeld;
 	}
 
-
-	public void setSharesHeld(int sharesHeld) {
-		this.sharesHeld = sharesHeld;
-	}
-
-
+	
 	public Exchange getBuyExchange() {
 		return buyExchange;
 	}
