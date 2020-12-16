@@ -16,10 +16,6 @@ public class BusinessLogRecordFormattter extends Formatter {
 		StringBuilder sb = new StringBuilder("\nCalculation: ");
 		sb.append( record.getName() );
 		sb.append('\n');
-		
-		sb.append("Result: ");
-		sb.append( record.getResult() );
-		sb.append('\n');
 		sb.append("Variables:\n");
 		
 		for(String key:record.getVariables().keySet()) {
@@ -29,7 +25,9 @@ public class BusinessLogRecordFormattter extends Formatter {
 			sb.append( record.getVariables().get(key));
 			sb.append('\n');
 		}
-		sb.append('\n');
+		sb.append("Result: ");
+		sb.append( record.getResult() );
+		sb.append("\n\n");
 		return sb.toString();
 	}
 

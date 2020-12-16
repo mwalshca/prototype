@@ -2,13 +2,13 @@ package com.fmax.prototype.model;
 
 import java.math.BigDecimal;
 
-public class Trade {
+public class Instance {
 	final Exchange   buyExchange;
 	final Exchange   hedgeExchange;
 	final Stock      stock;
 	
 	final BigDecimal buyPostingPrice;
-	final int        buyPostingSize;
+	final int        buyInitialPostingSize;
 	
 	final BigDecimal reflexPrice; //a.k.a. the hedge price
 	final BigDecimal cancelPrice;
@@ -17,7 +17,7 @@ public class Trade {
 	int   sharesSold;
 	int   sharesHeld;
 	
-	public Trade(
+	public Instance(
 			Exchange   buyExchange,
 			Exchange   hedgeExchange,
 			Stock      stock,
@@ -32,7 +32,7 @@ public class Trade {
 		this.buyPostingPrice = buyPostingPrice;
 		this.reflexPrice = reflexPrice;
 		this.cancelPrice = cancelPrice;
-		this.buyPostingSize = buyPostingSize;
+		this.buyInitialPostingSize = buyPostingSize;
 
 		checkInvariant();
 	}
@@ -55,20 +55,27 @@ public class Trade {
 	
 	
 	public boolean isComplete() {
-		return 0 == sharesHeld;
+		return 		sharesBought == buyInitialPostingSize
+				 && sharesSold   == buyInitialPostingSize;
+				
 	}
 	
 	
 	protected void checkInvariant() {
-		assert sharesHeld >= 0;
-		assert sharesHeld <= buyPostingSize;
-		
+		assert buyExchange != null;
+		assert hedgeExchange != null;
+		assert stock != null;
+		assert buyPostingPrice != null;
+		assert reflexPrice != null;
+		//FIXME assert cancelPrice != null;
+		assert buyInitialPostingSize >= 0;
+		assert sharesHeld   >= 0;
 		assert sharesBought >= 0;
-		assert sharesBought <= buyPostingSize;
+		assert sharesSold   >= 0;
 		
-		assert sharesSold >= 0;
+		assert sharesHeld <= buyInitialPostingSize;
+		assert sharesBought <= buyInitialPostingSize;
 		assert sharesSold <= sharesBought;
-		
 	}
 
 	
@@ -118,6 +125,17 @@ public class Trade {
 
 
 	public int getBuyPostingSize() {
-		return buyPostingSize;
-	}	
+		return buyInitialPostingSize;
+	}
+
+
+	@Override
+	public String toString() {
+		return "Instance [buyExchange=" + buyExchange + ", hedgeExchange=" + hedgeExchange + ", stock=" + stock
+				+ ", buyPostingPrice=" + buyPostingPrice + ", buyInitialPostingSize=" + buyInitialPostingSize
+				+ ", reflexPrice=" + reflexPrice + ", cancelPrice=" + cancelPrice + ", sharesBought=" + sharesBought
+				+ ", sharesSold=" + sharesSold + ", sharesHeld=" + sharesHeld + "]";
+	}
+	
+	
 }

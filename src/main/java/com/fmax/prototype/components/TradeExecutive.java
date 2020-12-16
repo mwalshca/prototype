@@ -4,7 +4,9 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.Currency;
+import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -18,7 +20,6 @@ import java.util.logging.Logger;
 import com.fmax.prototype.common.AsyncLogger;
 import com.fmax.prototype.common.BusinessLogRecordFormattter;
 import com.fmax.prototype.common.CalculationLogRecord;
-import com.fmax.prototype.events.BestBidSizeReceived;
 import com.fmax.prototype.events.Event;
 import com.fmax.prototype.events.ForeignExchangeQuoteReceived;
 import com.fmax.prototype.events.StockOrderAccepted;
@@ -28,8 +29,8 @@ import com.fmax.prototype.events.StockOrderPlaced;
 import com.fmax.prototype.events.StockQuoteReceived;
 import com.fmax.prototype.model.Exchange;
 import com.fmax.prototype.model.ExchangeMetadata;
+import com.fmax.prototype.model.Instance;
 import com.fmax.prototype.model.Stock;
-import com.fmax.prototype.model.Trade;
 import com.fmax.prototype.model.configuration.TradeExecutiveConfiguration;
 import com.fmax.prototype.model.quote.IForeignExchangeQuote;
 import com.fmax.prototype.model.quote.IStockQuote;
@@ -62,11 +63,8 @@ public class TradeExecutive {
 		LOGGER = new AsyncLogger(logger);
 	}
 	
+	//services
 	private final TradeGovernor 				tradeGovernor;
-	private final TradeExecutiveConfiguration   tradeExecutiveConfiguration;
-	private final ExchangeMetadata 				tsxMetadata;
-	private final ExchangeMetadata 				nyseMetadata;
-	    
 	private final OrderManagementService        orderManagementService = new OrderManagementService(this);
 	private final SecuritiesMasterService       securitiesMasterService;
 	private final TradeCalculationService       tradeCalculationService;
@@ -83,25 +81,23 @@ public class TradeExecutive {
     private final LinkedBlockingQueue<Event> events = new LinkedBlockingQueue<>();
     private final Thread threadHandleEvents;
     
-    // set during construction
-    final Stock    stock;
-    final Exchange postExchange;  
-    final Exchange hedgeExchange; 
-    final BigDecimal cdnAveragePostingRatio;
-    
-    
+    // configuration - set during construction
+    private final TradeExecutiveConfiguration   tradeExecutiveConfiguration;
+    private final Stock      		stock;
+    private final Exchange   		postExchange;  
+    private final Exchange   		hedgeExchange; 
+    private final BigDecimal 		cdnAveragePostingRatio;
+    private final ExchangeMetadata 	tsxMetadata;
+	private final ExchangeMetadata 	nyseMetadata;
+        
     //state we care about and need to replicate:
-    private final AtomicReference<IStockQuote> 			 nyseStockQuote = new AtomicReference<>();
-    private final AtomicReference<IStockQuote> 			 tseStockQuote = new AtomicReference<>();
-    private final AtomicReference<Integer>               nyseBestBidSize = new AtomicReference<>();
-    private final AtomicReference<Integer>               tseBestBidSize = new AtomicReference<>();
-    
-    private final AtomicReference<IForeignExchangeQuote> usCadCurrencyQuote = new AtomicReference<>();
+    private final EnumMap<Exchange, AtomicReference<IStockQuote>> currentStockQuotes = new EnumMap<Exchange, AtomicReference<IStockQuote>>(Exchange.class);
+    private final AtomicReference<IForeignExchangeQuote>          usCadCurrencyQuote = new AtomicReference<>();
 	
     private final ConcurrentHashMap<Long,StockOrder>     stockOrdersById = new ConcurrentHashMap<>();
-	private final ConcurrentHashMap<Long,Trade>			 tradesByStockOrderId = new ConcurrentHashMap<>();
-    private final HashSet<Trade>                         activeTrades = new HashSet<>();
-	private final HashSet<Trade>                         completedTrades = new HashSet<>();
+	private final ConcurrentHashMap<Long,Instance>	     tradesByStockOrderId = new ConcurrentHashMap<>();
+    private final LinkedList<Instance>                   activeTrades = new LinkedList<>();
+	private final HashSet<Instance>                      completedTrades = new HashSet<>();
 	
 	public TradeExecutive(TradeGovernor tradeGovernor, 
 			              TradeExecutiveConfiguration tradeExecutiveConfiguration,
@@ -119,6 +115,10 @@ public class TradeExecutive {
 				
 		postExchange = tradeExecutiveConfiguration.getBuyStockExchange();
 		hedgeExchange = tradeExecutiveConfiguration.getSellStockExchange();
+		
+		currentStockQuotes.put( postExchange, new AtomicReference<IStockQuote>() );
+		currentStockQuotes.put( hedgeExchange, new AtomicReference<IStockQuote>() );
+		
 		
 		cdnAveragePostingRatio = tradeExecutiveConfiguration.getMininumCdnBidPostingRatio()
 				                 .add( tradeExecutiveConfiguration.getMaxiumCdnBidPostingRatio())
@@ -190,14 +190,10 @@ public class TradeExecutive {
 					assert event instanceof StockOrderCompleted;
 					handle( (StockOrderCompleted) event);
 					break;
-				
-				case BEST_BID_SIZE_RECEIVED:
-					assert event instanceof BestBidSizeReceived;
-					handle( (BestBidSizeReceived)) event);
 					
 				default:
 					LOGGER.info(String.format("Unsupported event:%s", event.getEventType()));
-					break; // TODO log unsupported event
+					break;
 				}
 				LOGGER.info(String.format("\nEnd processing event:%s\n----------------------------\n\n",event.getEventType()) );
 			} catch (InterruptedException e) {
@@ -211,42 +207,42 @@ public class TradeExecutive {
 	
 	private void handle(StockQuoteReceived event) {
 		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
-
+		
+		//TODO BR-0004
+		//TODO BR-0005
+		// Verify correct stock quote
 		IStockQuote stockQuote = event.getStockQuote();
-		if(stockQuote.getExchange().equals(Exchange.TSE)) {
-			//TODO BR-0004
-			// TODO verify correct stock
-			tseStockQuote.set(stockQuote);
-			conditionallyInitiateTrade();
-		} else if(stockQuote.getExchange().equals(Exchange.NYSE)) {
-			//TODO BR-0005
-			// Verify correct stock quote
-			nyseStockQuote.set(stockQuote);
-			conditionallyInitiateTrade();
+		orderManagementService.push(stockQuote);
+		
+		boolean hedgeBestBidSizeChanged = false;
+		
+		if(stockQuote.getExchange().equals(hedgeExchange)) {
+			IStockQuote currentHedgeQuote = currentStockQuotes.get(hedgeExchange).get();
+			if(null == currentHedgeQuote)
+				hedgeBestBidSizeChanged = true;
+			else
+				hedgeBestBidSizeChanged = stockQuote.getBidSize() != currentHedgeQuote.getBidSize();
+			LOGGER.info( String.format( "Did hedgeBestBidSize change:%s", hedgeBestBidSizeChanged ) );
 		}
-		orderManagementService.push(stockQuote);//TODO for SIMULATOR only - remove later
+		
+		currentStockQuotes.get( stockQuote.getExchange()).set( stockQuote );
+		
+		if(hedgeBestBidSizeChanged) {
+			checkAndAdjustParticipation();
+		} 
 	}
 
 	
-	private void handle( ForeignExchangeQuoteReceived event ) {
+	private void handle(ForeignExchangeQuoteReceived event) {
 		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
 		
 		IForeignExchangeQuote quote = event.getForeignExchangeQuote();
 		//TODO BR-0002 bid must be less than ask
-		if(     CAD_CURRENCY.equals(quote.getBaseCurrency()) 
-			 && US_CURRENCY.equals( quote.getQuoteCurrency() )
-		) 
-		{
-			// TODO right now, do nothing
-		}
-		else if(    US_CURRENCY.equals(quote.getBaseCurrency()) 
-				 && CAD_CURRENCY.equals( quote.getQuoteCurrency() )
-				) 
+		if(    US_CURRENCY.equals( quote.getBaseCurrency( ) ) 
+		   && CAD_CURRENCY.equals( quote.getQuoteCurrency() ) ) 
 		{
 			usCadCurrencyQuote.set(quote);
-			conditionallyInitiateTrade();
 		}
-		
 	}
 	
 	
@@ -260,7 +256,7 @@ public class TradeExecutive {
 		}
 		assert order != null;
 		
-		final Trade trade = tradesByStockOrderId.get(order.getId());
+		final Instance trade = tradesByStockOrderId.get(order.getId());
 		assert trade != null;
 		assert activeTrades.contains(trade);
 		
@@ -272,44 +268,18 @@ public class TradeExecutive {
 		else if(order.getExchange().equals(hedgeExchange)) {
 			LOGGER.info( String.format("Hedge  stock order filled order id:%d # of shares filled: %d", event.getOrderId(),event.getnFilled() ));	
 			trade.hedgeFilled( event.getnFilled( ));
-			if( trade.isComplete() ) {
-				LOGGER.info( String.format("Trade completed:%s", trade) );
-				completedTrades.add( trade );
-				boolean removed = activeTrades.remove( trade );
-				assert removed;
-				if(shouldInitiateTrade()) {
-					initateTrade();
-				}
-			}
 		}
 		else
 			assert false;
+	
+		if( trade.isComplete() ) {
+			LOGGER.info( String.format("Trade completed:%s", trade) );
+			completedTrades.add( trade );
+			boolean removed = activeTrades.remove( trade );
+			assert removed;
+		}
 	}
 
-	private void handle( BestBidSizeReceived event){
-		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
-		
-		switch( event.getExchange() ) {
-		case NYSE:
-			nyseBestBidSize.set( event.getBestBidSize() );
-			break;
-		
-		case TSE:
-			tseBestBidSize.set( event.getBestBidSize() );
-			break;
-			
-		default:
-			LOGGER.info( String.format("Unsupported exchange:%s", event.getExchange() ));
-			break;
-		}
-		
-		if(event.getExchange() == hedgeExchange) {
-			conditionallyInitiateTrade();
-			//TODO conidtionally reduce oldestTrade
-		}
-	}
-	
-	
 	
 	private void handle( StockOrderPlaced event ) {
 		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
@@ -339,14 +309,15 @@ public class TradeExecutive {
 		assert order != null;
 		order.accepted();
 		
-		LOGGER.info( String.format("Stock order accepted: %s", order.toString()));
+		LOGGER.info( String.format("Stock order accepted: %s", order));
 	}
+	
 	
 	private void handle( StockOrderCompleted event ) {
 		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
+		
 		long id = event.getOrderId();
 		StockOrder order = stockOrdersById.get(id);
-		
 		if(null==order) {
 			//TODO alarm
 		}
@@ -360,85 +331,127 @@ public class TradeExecutive {
 	}
 	
 	
-	private void conditionallyInitiateTrade() {
-		if (shouldInitiateTrade()) {
-			LOGGER.info("Decision: initiate a Trade");
-			initateTrade();
+	private void checkAndAdjustParticipation() {
+		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
+		
+		int buySharesOutstanding = tradeCalculationService.getBuySharesOutstanding( activeTrades );
+		BigDecimal currentMarketParticipationRatio = tradeCalculationService.getMarketParticipationRatio(buySharesOutstanding, currentStockQuotes.get(hedgeExchange).get().getBidSize() );
+		
+		if( shouldReduceParticipation( currentMarketParticipationRatio ) ) {
+			LOGGER.info("Decision: reduce participation.\n");
+			reduceParticipation();
+			return;
 		} else
-			LOGGER.info("Decision: do not initiate a Trade.");
+			LOGGER.info("Decision: do not reduce participation.\n");
+		
+		if(shouldIncreaseParticipation(currentMarketParticipationRatio)) {
+			LOGGER.info("Decision: increase participation.\n");
+			increaseParticipation();
+		} else
+			LOGGER.info("Decision: do not increase participation.\n");
 	}
 	
 	
-	boolean shouldInitiateTrade() {
+	
+	
+	
+	private boolean shouldReduceParticipation(BigDecimal currentMarketParticipationRatio) {
 		CalculationLogRecord blr = new CalculationLogRecord();
-		blr.setName("shouldInitiateTrade");
+		blr.setName("shouldReduceParticipation");
+		blr.setVariable( "currentMarketParticipationRatio", currentMarketParticipationRatio);
+		
+		boolean shouldReduceParticipation = true; // until proven otherwise
+		
+		switch(hedgeExchange) {
+		case NYSE:
+			shouldReduceParticipation &= currentMarketParticipationRatio.compareTo( tradeExecutiveConfiguration.getMaxiumCdnBidPostingRatio() ) > 0;
+			break;
+			
+		default:
+			System.out.println( String.format("Unsupported hedge exchange:%s", hedgeExchange) );
+			shouldReduceParticipation = false;
+		}  
+		
+		blr.setResult(shouldReduceParticipation);
+		LOGGER.log(blr);
+		
+		return shouldReduceParticipation;
+	}
+	
+	
+	private void reduceParticipation() {
+		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread	
+		int maxOutstanding
+	}
+	
+	
+	boolean shouldIncreaseParticipation(BigDecimal currentMarketParticipationRatio) {
+		CalculationLogRecord blr = new CalculationLogRecord();
+		blr.setName("shouldIncreaseParticipation");
 
-		boolean shouldIntiateTrade = true; // until proven otherwise
+		boolean shouldIncreaseParticpation = true; // until proven otherwise
 
-		// don't initiate trade if we don't have enough data to trade
+		// don't increase participation if we don't have enough data to trade
 		boolean enoughDataToTrade = isEnoughDataToTrade();
 		blr.setVariable("enoughDataToTrade", enoughDataToTrade);
 		
-		shouldIntiateTrade &= enoughDataToTrade;
+		shouldIncreaseParticpation &= enoughDataToTrade;
 
 		//check participation
-		if(shouldIntiateTrade) {
-			assert activeTrades != null;
-			switch(hedgeExchange) {
-			case NYSE:
-				assert nyseBestBidSize.get() != null; // implied by enoughDataToTrade
-				int buySharesOutstanding = tradeCalculationService.getBuySharesOutstanding( activeTrades );
-			    BigDecimal currentMarketParticipationRatio = tradeCalculationService.getMarketParticipationRatio(buySharesOutstanding, nyseBestBidSize.get() );
-				shouldIntiateTrade &= currentMarketParticipationRatio.compareTo( tradeExecutiveConfiguration.getMininumCdnBidPostingRatio() ) < 0;
-				break;
-			default:
-				System.out.println( String.format("Unsupported hedge exchange:%s", hedgeExchange) );
-				shouldIntiateTrade = false;
-			}  
+		if (shouldIncreaseParticpation) {
+			shouldIncreaseParticpation &= currentMarketParticipationRatio.compareTo(tradeExecutiveConfiguration.getMininumCdnBidPostingRatio()) < 0; //TODO genericiz
+			blr.setVariable("mininumPostingRatio", tradeExecutiveConfiguration.getMininumCdnBidPostingRatio());
+			blr.setVariable("currentMarketParticipationRatio", currentMarketParticipationRatio);
 		}
 		
-		blr.setResult(shouldIntiateTrade);
+		blr.setResult(shouldIncreaseParticpation);
 		LOGGER.log(blr);
 		
-		return shouldIntiateTrade;
+		return shouldIncreaseParticpation;
 	}
 	
 	
-	private void initateTrade() {
+	private boolean increaseParticipation() {
 		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread	 
 		assert Exchange.TSE.equals(postExchange);
 		assert Exchange.NYSE.equals(hedgeExchange);
 		
 		BigDecimal buyPostingPrice = cadPostingPrice();
 		int buyPostingSize = cadPostingSize();	
-	
-		Trade newTrade = new Trade(
+		if(0 == buyPostingSize){
+			LOGGER.info("Buy posting size is zero. Decision: do not place an initating order.");
+			return false;
+		}
+		
+		Instance newTrade = new Instance(
 				postExchange,
 				hedgeExchange,
 				stock,
 				buyPostingPrice,
-				nyseStockQuote.get().getBid(), // reflexPrice, a.k.a. the hedge price
+				currentStockQuotes.get(hedgeExchange).get().getBid(),// reflexPrice, a.k.a. the hedge price
 				null, //TODO cancelPrice,
 				buyPostingSize
-				) ;
+				);
+		activeTrades.push( newTrade );
 		
-		boolean added = activeTrades.add( newTrade );
-	    assert added;
-
+		LOGGER.info( String.format("Created new Instance:%s", newTrade));
+		
 	    // place the order
 	    BuyOrder order = new BuyOrder(postExchange, stock, buyPostingSize, buyPostingPrice); 
 	    order.designed();
 	    stockOrdersById.put( order.getId(), order);
 	    tradesByStockOrderId.put( order.getId(), newTrade);
 	    orderManagementService.push(order);
+	    
+	    return true;
 	}
 	
 	
 	
-	private void placeHedgeOrder(Trade trade, int nShares) {
+	private void placeHedgeOrder(Instance trade, int nShares) {
 		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
 		
-		SellOrder hedgeOrder = new SellOrder( hedgeExchange, stock, nShares, nyseStockQuote.get().getBid());
+		SellOrder hedgeOrder = new SellOrder( hedgeExchange, stock, nShares, currentStockQuotes.get(hedgeExchange).get().getBid() );
 		hedgeOrder.designed();
 		stockOrdersById.put( hedgeOrder.getId(), hedgeOrder);
 		tradesByStockOrderId.put(hedgeOrder.getId(), trade);
@@ -446,22 +459,31 @@ public class TradeExecutive {
 	}
 	
 	
-	private int cadPostingSize() {
-		CalculationLogRecord record = new CalculationLogRecord();
-		record.setName("cadPostingSize");
-		record.setVariable("nyseBestBidSize", nyseBestBidSize.get());
-		record.setVariable("cdnAveragePostingRatio", cdnAveragePostingRatio);
+	// TODO refactor to generic
+    int cadPostingSize() {
+		IStockQuote hedgeExchangeQuote = currentStockQuotes.get(hedgeExchange).get();
 		
-		if(null == nyseBestBidSize.get()) {
+		CalculationLogRecord record = new CalculationLogRecord();
+		record.setVariable("hedge exchange StockQuote", hedgeExchangeQuote);
+
+		if(null == hedgeExchangeQuote) { 
 			record.setResult(0);
 			LOGGER.log(record);	
-			return 0;
+			return 0; 
 		}	
-		assert nyseBestBidSize.get() != null;
+		assert hedgeExchangeQuote != null;
 		
-		BigDecimal bdNyseBestBidSize = new BigDecimal( this.nyseBestBidSize.get(), MATH_CONTEXT_WHOLE_NUMBER_ROUND_DOWN);
-		int cadPostingSize = cdnAveragePostingRatio.multiply(bdNyseBestBidSize, MATH_CONTEXT_WHOLE_NUMBER_ROUND_DOWN).intValue();
+		BigDecimal bdNyseBestBidSize = new BigDecimal( hedgeExchangeQuote.getBidSize(), MATH_CONTEXT_WHOLE_NUMBER_ROUND_DOWN);
+		int buySharesOutstanding = tradeCalculationService.getBuySharesOutstanding( activeTrades );
+		int cadPostingSize = cdnAveragePostingRatio.multiply(bdNyseBestBidSize, MATH_CONTEXT_WHOLE_NUMBER_ROUND_DOWN).intValue() - buySharesOutstanding;
+		if( cadPostingSize <0) {
+			cadPostingSize = 0;
+		}
+		cadPostingSize = (cadPostingSize / 100) * 100; //round down to nearest board lot size; //TODO remove hard coding
 		
+		record.setName("cadPostingSize");
+		record.setVariable("cdnAveragePostingRatio", cdnAveragePostingRatio);
+		record.setVariable( "buySharesOutstanding", buySharesOutstanding);
 		record.setResult( cadPostingSize );
 		LOGGER.log(record);
 		
@@ -469,36 +491,38 @@ public class TradeExecutive {
 	}
 
 	
+	
 	private BigDecimal cadPostingPrice() {
 		CalculationLogRecord record = new CalculationLogRecord();
 		record.setName("cadPostingPrice");
 		
+		IStockQuote tseStockQuote = currentStockQuotes.get(Exchange.TSE).get();
 		// calculate the posting price
 		final BigDecimal passivePostingPrice = cadPassivePostingPrice();
-		if (passivePostingPrice.compareTo(tseStockQuote.get().getAsk()) == -1) {
+		if (passivePostingPrice.compareTo(tseStockQuote.getAsk()) == -1) {
 			record.setVariable("passivePostingPrice", passivePostingPrice);
 			record.setVariable("tseStockQuote", tseStockQuote);
 			record.setResult(passivePostingPrice);
 			LOGGER.log(record);
 			return passivePostingPrice;
 		} else {
-			final BigDecimal aggressivePostingPrice = this.cadAggressivePostingPrice();
+			final BigDecimal aggressivePostingPrice = cadAggressivePostingPrice();
 			record.setVariable("aggressivePostingPrice", aggressivePostingPrice);
 			record.setVariable("tseStockQuote", tseStockQuote);
-			record.setResult(passivePostingPrice);
+			record.setResult(aggressivePostingPrice);
 			LOGGER.log(record);
 			return aggressivePostingPrice;
 		}
 	}
 	
 	protected BigDecimal cadPassivePostingPrice() {
-		BigDecimal usBestBid = this.nyseStockQuote.get().getBid();
-		BigDecimal usdCadFxBid = this.usCadCurrencyQuote.get().getBid();
-		BigDecimal netProfitInCA = this.tradeExecutiveConfiguration.getNetProfitPerShareCDN();
-		BigDecimal canadianPassiveEchangeFee = this.tsxMetadata.getPassiveExchangeFeePerShare();
-		BigDecimal canadianRSFee = this.tsxMetadata.getRoutedExchangeFeePerShare();
-		BigDecimal projectedInitiationCosts = canadianPassiveEchangeFee.add(canadianRSFee);
-		BigDecimal projectedHedgeCosts = this.nyseMetadata.getAgressiveExchangeFeePerShare(); //TODO add SEC fee
+		BigDecimal usBestBid     =  currentStockQuotes.get(Exchange.NYSE).get().getBid();
+		BigDecimal usdCadFxBid   = usCadCurrencyQuote.get().getBid();
+		BigDecimal netProfitInCA = tradeExecutiveConfiguration.getNetProfitPerShareCDN();
+		BigDecimal canadianPassiveEchangeFee = tsxMetadata.getPassiveExchangeFeePerShare();
+		BigDecimal canadianRSFee             = tsxMetadata.getRoutedExchangeFeePerShare();
+		BigDecimal projectedInitiationCosts  = canadianPassiveEchangeFee.add(canadianRSFee);
+		BigDecimal projectedHedgeCosts       = nyseMetadata.getAgressiveExchangeFeePerShare(); //TODO add SEC fee
 		
 		//CA posting price = round down to nearest tick (US best bid * USD/CAD FX bid - (Net profit in CA + Projected initiation costs + (Projected hedge costs * USD/CAD FX ask)))
 		BigDecimal cadPostingPrice =  usBestBid.multiply( usdCadFxBid )
@@ -506,7 +530,7 @@ public class TradeExecutive {
 				                               .subtract( projectedInitiationCosts )
 				                               .subtract( projectedHedgeCosts.multiply(usdCadFxBid) )                                                            
 		 									   .setScale(2,  RoundingMode.DOWN);
-		
+		/*
 		CalculationLogRecord record = new CalculationLogRecord();
 		record.setName("CA passive posting price");
 		record.setVariable("usBestBid", usBestBid);
@@ -518,29 +542,30 @@ public class TradeExecutive {
 		record.setVariable("projectedHedgeCosts", projectedHedgeCosts);
 		record.setResult(cadPostingPrice);
 		LOGGER.log(record);
-		
+		*/
 		return cadPostingPrice;
 	}
 
 	
 	protected BigDecimal cadAggressivePostingPrice() {
-		BigDecimal usBestBid = this.nyseStockQuote.get().getBid();
-		BigDecimal usdCadFxBid = this.usCadCurrencyQuote.get().getBid();
-		BigDecimal netProfitInCA = this.tradeExecutiveConfiguration.getNetProfitPerShareCDN();
-		BigDecimal canadianAggressiveEchangeFee = this.tsxMetadata.getAgressiveExchangeFeePerShare();
-		BigDecimal canadianRSFee = this.tsxMetadata.getRoutedExchangeFeePerShare();
-		BigDecimal projectedInitiationCosts = canadianAggressiveEchangeFee.add(canadianRSFee);
-		BigDecimal projectedHedgeCosts = this.nyseMetadata.getAgressiveExchangeFeePerShare(); //TODO add SEC fee
+		BigDecimal usBestBid     = currentStockQuotes.get(Exchange.NYSE).get().getBid();
+		BigDecimal usdCadFxBid   = usCadCurrencyQuote.get().getBid();
+		BigDecimal netProfitInCA = tradeExecutiveConfiguration.getNetProfitPerShareCDN();
+		BigDecimal canadianAggressiveEchangeFee = tsxMetadata.getAgressiveExchangeFeePerShare();
+		BigDecimal canadianRSFee                = tsxMetadata.getRoutedExchangeFeePerShare();
+		BigDecimal projectedInitiationCosts     = canadianAggressiveEchangeFee.add(canadianRSFee);
+		BigDecimal projectedHedgeCosts          = nyseMetadata.getAgressiveExchangeFeePerShare(); //TODO add SEC fee
 		
 		
 		//CA posting price = round down to nearest tick (US best bid * USD/CAD FX bid - (Net profit in CA + Projected initiation costs + (Projected hedge costs * USD/CAD FX ask)))
-		BigDecimal cadPostingPrice = usBestBid.multiply( usdCadFxBid )
+		BigDecimal cadAggressivePostingPrice = usBestBid.multiply( usdCadFxBid )
 											  .subtract( netProfitInCA )
 											  .subtract( projectedInitiationCosts )
 											  .subtract( projectedHedgeCosts.multiply(usdCadFxBid) )
 											  .setScale(2,  RoundingMode.DOWN); 
 		
 
+		/*
 		CalculationLogRecord record = new CalculationLogRecord();
 		record.setName("CA agressive posting price");
 		record.setVariable("usBestBid", usBestBid);
@@ -552,29 +577,25 @@ public class TradeExecutive {
 		record.setVariable("projectedHedgeCosts", projectedHedgeCosts);
 		record.setResult(cadPostingPrice);
 		LOGGER.log(record);
-		
-		return cadPostingPrice;
+		*/
+		return cadAggressivePostingPrice;
 	}
 	
 	
 	private boolean isEnoughDataToTrade() {
-		CalculationLogRecord blr = new CalculationLogRecord();	
+		/* CalculationLogRecord blr = new CalculationLogRecord();	
 		blr.setName("isEnoughDataToTrade");
 		blr.setVariable("tseStockQuote", tseStockQuote.get() );
 		blr.setVariable("nyseStockQuote", nyseStockQuote.get() );
 		blr.setVariable("usCadCurrencyQuote", usCadCurrencyQuote.get() );
-		blr.setVariable("hedgeExchange", hedgeExchange );
-		blr.setVariable("nyseBestBidSize", nyseBestBidSize.get() );
-		
+		*/
 		boolean isEnough = 
-				   tseStockQuote.get() != null
-				&& nyseStockQuote.get() != null
-				&& usCadCurrencyQuote.get() != null
-				&& Exchange.NYSE.equals(hedgeExchange)
-				&& nyseBestBidSize.get() != null;
+				    currentStockQuotes.get(postExchange).get() != null
+				&&  currentStockQuotes.get(hedgeExchange).get() != null
+				&&  usCadCurrencyQuote.get() != null;
 		
-		blr.setResult( isEnough );
-		LOGGER.log(blr);
+	//	blr.setResult( isEnough );
+	//	LOGGER.log(blr);
 		
 		return isEnough;
 	}
@@ -622,8 +643,7 @@ public class TradeExecutive {
 			}
 		}
 	}
-	
-
+		
 	public void push(IForeignExchangeQuote quote) {
 		boolean put = false;
 		do {
@@ -715,6 +735,7 @@ public class TradeExecutive {
 			}
 		} while (!put);	
 	}
+	
 	
 	public void pushOrderFilled(long orderId, int unitsFilled) {
 		boolean put = false;

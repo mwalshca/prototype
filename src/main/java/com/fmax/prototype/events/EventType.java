@@ -3,7 +3,6 @@ package com.fmax.prototype.events;
 public enum EventType {
 	STOCK_QUOTE_RECEIVED,
 	FOREIGN_EXCHANGE_QUOTE_RECEIVED,
-	BEST_BID_SIZE_RECEIVED,
 	
 	STOCK_ORDER_PLACED,
 	STOCK_ORDER_ACCEPTED,

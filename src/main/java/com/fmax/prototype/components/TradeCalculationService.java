@@ -2,42 +2,19 @@ package com.fmax.prototype.components;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Set;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Collection;
 
 import org.springframework.stereotype.Service;
 
-import com.fmax.prototype.common.AsyncLogger;
-import com.fmax.prototype.common.BusinessLogRecordFormattter;
-import com.fmax.prototype.common.CalculationLogRecord;
 import com.fmax.prototype.common.RPMMath;
-import com.fmax.prototype.model.Trade;
+import com.fmax.prototype.model.Instance;
 
 @Service
 public class TradeCalculationService {
-	
-	private static final AsyncLogger LOGGER;
-	
-	static {
-		Logger logger = Logger.getLogger("bd." + TradeCalculationService.class.getName());
-		logger.setUseParentHandlers(false);
-		logger.setLevel(Level.ALL);
-		
-		Handler handler = new  ConsoleHandler();
-		handler.setFormatter(new BusinessLogRecordFormattter());
-		 
-		logger.addHandler(handler);
-				
-		LOGGER = new AsyncLogger(logger);
-	}
-	
 
-    public int getBuySharesOutstanding(Set<Trade> activeTrades) {    	
+    public int getBuySharesOutstanding(Collection<Instance> activeTrades) {    	
     	int buySharesOutstanding = 0;
-		for(Trade activeTrade: activeTrades) {
+		for(Instance activeTrade: activeTrades) {
 			buySharesOutstanding += activeTrade.getBuyPostingSize() - activeTrade.getSharesBought();
 		}
 		return buySharesOutstanding;
@@ -106,6 +83,7 @@ public class TradeCalculationService {
 				                               .subtract( projectedHedgeCosts.multiply(usdCadFxBid) )                                                            
 		 									   .setScale(2,  RoundingMode.DOWN);
 		
+		/*
 		CalculationLogRecord record = new CalculationLogRecord();
 		record.setName("CA passive posting price");
 		record.setVariable("usBestBid", usBestBid);
@@ -116,7 +94,7 @@ public class TradeCalculationService {
 		record.setVariable("projectedInitiationCosts", projectedInitiationCosts);
 		record.setVariable("projectedHedgeCosts", projectedHedgeCosts);
 		record.setResult(cadPostingPrice);
-		//TODO LOGGER.log(record);
+		*/
 		
 		return cadPostingPrice;
 	}

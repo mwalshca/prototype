@@ -3,6 +3,7 @@ package com.fmax.prototype.components;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.fmax.prototype.model.quote.IStockQuote;
 import com.fmax.prototype.model.trade.BuyOrder;
@@ -13,6 +14,8 @@ import com.fmax.prototype.model.trade.StockOrder;
 /** Note: This is a simulator (mock) implementation */
 public class OrderManagementService {
 
+	private final AtomicReference<IStockQuote> currentQuote = new AtomicReference<>();
+	
 	private final TradeExecutive tradeExecutive;
 	
 	private LinkedBlockingQueue<IStockQuote> quotesIn = new LinkedBlockingQueue<>();
@@ -44,6 +47,8 @@ public class OrderManagementService {
 				case BUY:
 					assert order instanceof BuyOrder;
 					buyOrders.add( (BuyOrder) order);
+					if(currentQuote.get() != null)
+						handleQuoteReceived( currentQuote.get() );
 					break;
 				case SELL:
 					assert order instanceof SellOrder;
@@ -65,6 +70,7 @@ public class OrderManagementService {
 		while(true) {
 			try {
 				IStockQuote quote = quotesIn.take(); 
+				currentQuote.set(quote);
 				handleQuoteReceived(quote);
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
