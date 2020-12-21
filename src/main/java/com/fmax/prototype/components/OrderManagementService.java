@@ -1,5 +1,6 @@
 package com.fmax.prototype.components;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -39,10 +40,13 @@ public class OrderManagementService {
 			StockOrder order;
 			try {
 				order = ordersIn.take();
+				
 				Thread.sleep(1000); 
 				tradeExecutive.pushOrderPlaced( order.getId() ) ; 	
+				
 				Thread.sleep(1000); 
-				tradeExecutive.pushOrderAccepted(order.getId()); 
+				tradeExecutive.pushOrderAccepted(order.getId(), LocalDateTime.now() ); 
+				
 				switch( order.getType()) {
 				case BUY:
 					assert order instanceof BuyOrder;

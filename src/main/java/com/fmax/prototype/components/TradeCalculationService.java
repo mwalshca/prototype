@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.fmax.prototype.common.RPMMath;
 import com.fmax.prototype.model.Instance;
+import com.fmax.prototype.model.trade.BuyOrder;
 
 @Service
 public class TradeCalculationService {
@@ -97,5 +98,20 @@ public class TradeCalculationService {
 		*/
 		
 		return cadPostingPrice;
+	}
+	
+	public static int compateBuyOrderByDttmCreatedDescending(BuyOrder lhs, BuyOrder rhs) {
+		if(null==lhs) {
+			if(null==rhs)
+				return 0; //null equal
+			assert rhs != null;
+			    return 1;         
+		} else {
+			assert lhs != null;
+			if(null==rhs)
+				return -1; 
+			assert rhs != null;
+			return rhs.getDttmCreated().compareTo(lhs.getDttmCreated());
+		}
 	}
 }

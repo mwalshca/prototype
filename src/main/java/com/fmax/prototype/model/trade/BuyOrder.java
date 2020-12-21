@@ -1,6 +1,7 @@
 package com.fmax.prototype.model.trade;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import com.fmax.prototype.model.Exchange;
 import com.fmax.prototype.model.Stock;
@@ -15,6 +16,14 @@ public class BuyOrder  extends StockOrder{
 		this.postingPrice = postingPrice;
 	}
 	
+	
+	public BuyOrder(Exchange exchange, Stock stock, int quantityOrdered, BigDecimal postingPrice, LocalDateTime dttmCreated) {
+		super(StockOrderType.BUY, exchange, stock, dttmCreated);
+		this.quantityOrdered = quantityOrdered;
+		this.postingPrice = postingPrice;
+	}
+	
+	
 	public int getQuantityOrdered() {
 		return quantityOrdered;
 	}
@@ -26,6 +35,7 @@ public class BuyOrder  extends StockOrder{
 	@Override
 	public String toString() {
 		return "BuyOrder [quantityOrdered=" + quantityOrdered + ", postingPrice=" + postingPrice + ", id=" + id
-				+ ", type=" + type + ", exchange=" + exchange + ", stock=" + stock + ", status=" + status + "]";
+				+ ", type=" + type + ", exchange=" + exchange + ", stock=" + stock + ", dttmCreated=" + dttmCreated
+				+ ", dttmAccepted=" + dttmAccepted + ", status=" + status + "]";
 	}
 }

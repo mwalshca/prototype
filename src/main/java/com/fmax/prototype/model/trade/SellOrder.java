@@ -55,6 +55,7 @@ public class SellOrder extends StockOrder {
 	@Override
 	public String toString() {
 		return "SellOrder [quantityOrdered=" + quantityOrdered + ", postingPrice=" + postingPrice + ", id=" + id
-				+ ", type=" + type + ", exchange=" + exchange + ", stock=" + stock + ", status=" + status + "]";
+				+ ", type=" + type + ", exchange=" + exchange + ", stock=" + stock + ", dttmCreated=" + dttmCreated
+				+ ", dttmAccepted=" + dttmAccepted + ", status=" + status + "]";
 	}
 }

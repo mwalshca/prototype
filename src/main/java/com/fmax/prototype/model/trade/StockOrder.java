@@ -1,5 +1,7 @@
 package com.fmax.prototype.model.trade;
 
+import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 
 import com.fmax.prototype.model.Exchange;
@@ -10,6 +12,8 @@ public abstract class StockOrder {
 	final StockOrderType type;
 	final Exchange exchange;
 	final Stock stock;
+	final LocalDateTime dttmCreated;
+	LocalDateTime dttmAccepted;
 	
 	OrderStatus status = OrderStatus.IN_DESIGN;
 	
@@ -17,6 +21,15 @@ public abstract class StockOrder {
 		this.type = type;
 		this.exchange = exchange;
 		this.stock = security;
+		this.dttmCreated = LocalDateTime.now();
+	}
+	
+	/** mostly for unit tests */
+	protected StockOrder(StockOrderType type, Exchange exchange, Stock security, LocalDateTime dttmCreated) {
+		this.type = type;
+		this.exchange = exchange;
+		this.stock = security;
+		this.dttmCreated = LocalDateTime.now();
 	}
 
 	public long getId() {
@@ -53,9 +66,10 @@ public abstract class StockOrder {
 		status = OrderStatus.PLACED;
 	}
 
-	public void accepted() {
+	public void accepted(LocalDateTime dttmAccepted) {
 		assert OrderStatus.PLACED.equals(status);
 		status = OrderStatus.ACCEPTED;
+		this.dttmAccepted = Objects.requireNonNull( dttmAccepted );
 	}
 
 	public void completed() {
@@ -63,9 +77,19 @@ public abstract class StockOrder {
 		status = OrderStatus.COMPLETED;
 	}
 
+	
+	public LocalDateTime getDttmAccepted() {
+		return dttmAccepted;
+	}
+
+	public LocalDateTime getDttmCreated() {
+		return dttmCreated;
+	}
+
 	@Override
 	public String toString() {
-		return "StockOrder [id=" + id + ", type=" + type + ", exchange=" + exchange + ", stock=" + stock + ", status="
-				+ status + "]";
+		return "StockOrder [id=" + id + ", type=" + type + ", exchange=" + exchange + ", stock=" + stock
+				+ ", dttmCreated=" + dttmCreated + ", dttmAccepted=" + dttmAccepted + ", status=" + status + "]";
 	}
+
 }
