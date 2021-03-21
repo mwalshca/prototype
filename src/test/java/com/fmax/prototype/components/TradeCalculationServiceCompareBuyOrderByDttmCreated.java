@@ -8,14 +8,16 @@ import org.junit.jupiter.api.Test;
 import com.fmax.prototype.model.Exchange;
 import com.fmax.prototype.model.Stock;
 import com.fmax.prototype.model.trade.BuyOrder;
+import com.fmax.prototype.model.trade.StockOrder;
+import com.fmax.prototype.services.TradeCalculationService;
 
 //TODO make Spring-compatible
-class CompareBuyOrderByDttmCreated {
+class TradeCalculationServiceCompareBuyOrderByDttmCreated {
 	
 	@Test
 	void bothNull() {
-		BuyOrder lhs = null;
-		BuyOrder rhs = null;
+		StockOrder lhs = null;
+		StockOrder rhs = null;
 		
 		int results = TradeCalculationService.compateBuyOrderByDttmCreatedDescending(lhs, rhs);
 		org.junit.jupiter.api.Assertions.assertEquals(0, results);
@@ -23,12 +25,12 @@ class CompareBuyOrderByDttmCreated {
 
 	@Test
 	void lhsNotNullRhsNull() {
-		BuyOrder lhs = new BuyOrder( Exchange.TSE, 
+		StockOrder lhs = new BuyOrder( Exchange.TSE, 
 				                     new Stock("780087102", "RY.TO", "RY"),
 				                     100,
 				                     new BigDecimal("10.00")
 				                   );
-		BuyOrder rhs = null;
+		StockOrder rhs = null;
 		
 		int results = TradeCalculationService.compateBuyOrderByDttmCreatedDescending(lhs, rhs);
 		org.junit.jupiter.api.Assertions.assertEquals(-1, results); 
@@ -37,9 +39,9 @@ class CompareBuyOrderByDttmCreated {
 
 	@Test
 	void lhsNullRhsNotNull() {
-		BuyOrder lhs = null;
+		StockOrder lhs = null;
 		
-		BuyOrder rhs = new BuyOrder( Exchange.TSE, 
+		StockOrder rhs = new BuyOrder( Exchange.TSE, 
 				                     new Stock("780087102", "RY.TO", "RY"),
 				                     100,
 				                     new BigDecimal("10.00")
@@ -52,13 +54,13 @@ class CompareBuyOrderByDttmCreated {
 	
 	@Test
 	void rhsAfterLhs() {
-		BuyOrder lhs = new BuyOrder( Exchange.TSE, 
+		StockOrder lhs = new BuyOrder( Exchange.TSE, 
                 new Stock("780087102", "RY.TO", "RY"),
                 100,
                 new BigDecimal("10.00")
               );
 
-		BuyOrder rhs = new BuyOrder( Exchange.TSE, 
+		StockOrder rhs = new BuyOrder( Exchange.TSE, 
 				                     new Stock("780087102", "RY.TO", "RY"),
 				                     100,
 				                     new BigDecimal("10.00"),
@@ -74,13 +76,13 @@ class CompareBuyOrderByDttmCreated {
 
 	@Test
 	void rhsBeforelhs() {
-		BuyOrder lhs = new BuyOrder( Exchange.TSE, 
+		StockOrder lhs = new BuyOrder( Exchange.TSE, 
                 new Stock("780087102", "RY.TO", "RY"),
                 100,
                 new BigDecimal("10.00")
               );
 
-		BuyOrder rhs = new BuyOrder( Exchange.TSE, 
+		StockOrder rhs = new BuyOrder( Exchange.TSE, 
 				                     new Stock("780087102", "RY.TO", "RY"),
 				                     100,
 				                     new BigDecimal("10.00"),

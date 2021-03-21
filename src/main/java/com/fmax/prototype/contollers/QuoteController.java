@@ -12,15 +12,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fmax.prototype.components.ExchangeMetadataService;
-import com.fmax.prototype.components.SecuritiesMasterService;
-import com.fmax.prototype.components.TradeCalculationService;
-import com.fmax.prototype.components.TradeExecutive;
-import com.fmax.prototype.components.TradeGovernor;
 import com.fmax.prototype.model.Exchange;
 import com.fmax.prototype.model.configuration.TradeExecutiveConfiguration;
 import com.fmax.prototype.model.quote.ForeignExchangeQuote;
 import com.fmax.prototype.model.quote.StockQuote;
+import com.fmax.prototype.services.ExchangeMetadataService;
+import com.fmax.prototype.services.SecuritiesMasterService;
+import com.fmax.prototype.services.TradeCalculationService;
+import com.fmax.prototype.services.TradeExecutive;
+import com.fmax.prototype.services.TradeGovernor;
 
 
 

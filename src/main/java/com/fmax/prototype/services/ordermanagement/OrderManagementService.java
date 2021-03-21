@@ -1,4 +1,4 @@
-package com.fmax.prototype.components;
+package com.fmax.prototype.services.ordermanagement;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -10,6 +10,7 @@ import com.fmax.prototype.model.quote.IStockQuote;
 import com.fmax.prototype.model.trade.BuyOrder;
 import com.fmax.prototype.model.trade.SellOrder;
 import com.fmax.prototype.model.trade.StockOrder;
+import com.fmax.prototype.services.TradeExecutive;
 
 
 /** Note: This is a simulator (mock) implementation */

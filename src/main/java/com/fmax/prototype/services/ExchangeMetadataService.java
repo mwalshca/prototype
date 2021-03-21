@@ -1,4 +1,4 @@
-package com.fmax.prototype.components;
+package com.fmax.prototype.services;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

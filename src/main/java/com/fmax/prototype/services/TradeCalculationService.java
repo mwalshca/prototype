@@ -1,4 +1,4 @@
-package com.fmax.prototype.components;
+package com.fmax.prototype.services;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.fmax.prototype.common.RPMMath;
 import com.fmax.prototype.model.Instance;
-import com.fmax.prototype.model.trade.BuyOrder;
+import com.fmax.prototype.model.trade.StockOrder;
 
 @Service
 public class TradeCalculationService {
@@ -100,7 +100,7 @@ public class TradeCalculationService {
 		return cadPostingPrice;
 	}
 	
-	public static int compateBuyOrderByDttmCreatedDescending(BuyOrder lhs, BuyOrder rhs) {
+	public static int compateBuyOrderByDttmCreatedDescending(StockOrder lhs, StockOrder rhs) {
 		if(null==lhs) {
 			if(null==rhs)
 				return 0; //null equal

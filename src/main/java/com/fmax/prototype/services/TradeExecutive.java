@@ -1,4 +1,4 @@
-package com.fmax.prototype.components;
+package com.fmax.prototype.services;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.Currency;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Objects;
 import java.util.PriorityQueue;
@@ -40,6 +41,7 @@ import com.fmax.prototype.model.trade.BuyOrder;
 import com.fmax.prototype.model.trade.SellOrder;
 import com.fmax.prototype.model.trade.StockOrder;
 import com.fmax.prototype.model.trade.StockOrderType;
+import com.fmax.prototype.services.ordermanagement.OrderManagementService;
 
 
 /** Current implementation ONLY looks at bids on the from the TSE and asks from the NYSE */
@@ -413,12 +415,24 @@ public class TradeExecutive {
 			LOGGER.info("reduceParticipation() logical error: sharesToReduce<0"); //TODO alarm
 			return;
 		} else if(sharesToReduce > buySharesOutstanding) {
-			LOGGER.info("reduceParticipation() logical error: sharesToReduce>buySharesOutstanding");
+			LOGGER.info("reduceParticipation() logical error: sharesToReduce>buySharesOutstanding"); //TODO alarm
+			return;
 		}
 		
 		LOGGER.info( String.format("Shares to reduce on buy-side:%d", sharesToReduce));
 		
 		int sharesLeftToReduce = sharesToReduce;
+		Iterator<BuyOrder> iBuyOrders = this.activeBuyOrdersByDttmCreatedDescending.iterator();
+		while( sharesLeftToReduce>0 && iBuyOrders.hasNext() ) {
+			StockOrder buyOrder = iBuyOrders.next();
+			assert buyOrder != null;
+			
+			Instance trade = tradesByStockOrderId.get( buyOrder.getId() );
+			assert trade != null;
+			if(buyOrder.getQuantityOrdered() > trade.getSharesBought()) {
+				
+			}
+		}
 	}
 	
 	
@@ -475,7 +489,6 @@ public class TradeExecutive {
 		
 	    // place the order
 	    BuyOrder buyOrder = new BuyOrder(postExchange, stock, buyPostingSize, buyPostingPrice); 
-	    buyOrder.designed();
 	    stockOrdersById.put( buyOrder.getId(), buyOrder);
 	    tradesByStockOrderId.put( buyOrder.getId(), newTrade);
 	    orderManagementService.push(buyOrder);
@@ -485,12 +498,10 @@ public class TradeExecutive {
 	}
 	
 	
-	
 	private void placeHedgeOrder(Instance trade, int nShares) {
 		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
 		
-		SellOrder hedgeOrder = new SellOrder( hedgeExchange, stock, nShares, currentStockQuotes.get(hedgeExchange).get().getBid() );
-		hedgeOrder.designed();
+		StockOrder hedgeOrder = new SellOrder( hedgeExchange, stock, nShares, currentStockQuotes.get(hedgeExchange).get().getBid() );
 		stockOrdersById.put( hedgeOrder.getId(), hedgeOrder);
 		tradesByStockOrderId.put(hedgeOrder.getId(), trade);
 		orderManagementService.push(hedgeOrder);

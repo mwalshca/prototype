@@ -1,5 +1,6 @@
 package com.fmax.prototype.model.trade;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
@@ -9,27 +10,34 @@ import com.fmax.prototype.model.Stock;
 
 public abstract class StockOrder {
 	final long id = ThreadLocalRandom.current().nextLong();
+	
+	int quantityOrdered;
+	final BigDecimal postingPrice;
 	final StockOrderType type;
 	final Exchange exchange;
 	final Stock stock;
 	final LocalDateTime dttmCreated;
 	LocalDateTime dttmAccepted;
 	
-	OrderStatus status = OrderStatus.IN_DESIGN;
+	OrderStatus status = OrderStatus.TO_BE_PLACED;
 	
-	protected StockOrder(StockOrderType type, Exchange exchange, Stock security) {
+	protected StockOrder(StockOrderType type, Exchange exchange, Stock security, int quantityOrdered, BigDecimal postingPrice) {
 		this.type = type;
 		this.exchange = exchange;
 		this.stock = security;
 		this.dttmCreated = LocalDateTime.now();
+		this.quantityOrdered = quantityOrdered;
+		this.postingPrice = postingPrice;
 	}
 	
 	/** mostly for unit tests */
-	protected StockOrder(StockOrderType type, Exchange exchange, Stock security, LocalDateTime dttmCreated) {
+	protected StockOrder(StockOrderType type, Exchange exchange, Stock security, int quantityOrdered, BigDecimal postingPrice, LocalDateTime dttmCreated) {
 		this.type = type;
 		this.exchange = exchange;
 		this.stock = security;
 		this.dttmCreated = LocalDateTime.now();
+		this.quantityOrdered = quantityOrdered;
+		this.postingPrice = postingPrice;
 	}
 
 	public long getId() {
@@ -54,11 +62,6 @@ public abstract class StockOrder {
 
 	public void setStatus(OrderStatus status) {
 		this.status = status;
-	}
-
-	public void designed() {
-		assert OrderStatus.IN_DESIGN.equals(status);
-		status = OrderStatus.TO_BE_PLACED;
 	}
 
 	public void placed() {
@@ -86,10 +89,18 @@ public abstract class StockOrder {
 		return dttmCreated;
 	}
 
-	@Override
-	public String toString() {
-		return "StockOrder [id=" + id + ", type=" + type + ", exchange=" + exchange + ", stock=" + stock
-				+ ", dttmCreated=" + dttmCreated + ", dttmAccepted=" + dttmAccepted + ", status=" + status + "]";
+	public int getQuantityOrdered() {
+		return quantityOrdered;
 	}
 
+	public BigDecimal getPostingPrice() {
+		return postingPrice;
+	}
+
+	@Override
+	public String toString() {
+		return "StockOrder [id=" + id + ", quantityOrdered=" + quantityOrdered + ", postingPrice=" + postingPrice
+				+ ", type=" + type + ", exchange=" + exchange + ", stock=" + stock + ", dttmCreated=" + dttmCreated
+				+ ", dttmAccepted=" + dttmAccepted + ", status=" + status + "]";
+	}
 }

@@ -1,4 +1,4 @@
-package com.fmax.prototype.components;
+package com.fmax.prototype.services;
 
 import org.springframework.stereotype.Service;
 
