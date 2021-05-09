@@ -28,3 +28,5 @@ target/classes/META-INF/maven/com.fmax/prototype/pom.properties
 target/classes/META-INF/maven/com.fmax/prototype/pom.properties
 target/classes/META-INF/maven/com.fmax/prototype/pom 2.properties
 target/classes/META-INF/maven/com.fmax/prototype/pom.properties
+target/classes/application.yml
+target/maven-archiver/pom.properties
