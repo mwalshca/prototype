@@ -26,7 +26,8 @@ public class StockQuote implements IStockQuote {
 		BigDecimal bid,
 		BigDecimal ask,
 		int        bidSize,
-		LocalDateTime dateTime){
+		LocalDateTime dateTime)
+	{
 		this.ask = ask;
 		this.bid = bid;
 		this.exchange = exchange;

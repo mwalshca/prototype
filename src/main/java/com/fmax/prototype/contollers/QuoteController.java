@@ -1,4 +1,4 @@
-package com.fmax.prototype.contollers;
+ package com.fmax.prototype.contollers;
 
 import java.math.BigDecimal;
 
@@ -21,6 +21,8 @@ import com.fmax.prototype.services.SecuritiesMasterService;
 import com.fmax.prototype.services.TradeCalculationService;
 import com.fmax.prototype.services.TradeExecutive;
 import com.fmax.prototype.services.TradeGovernor;
+import com.fmax.prototype.services.ib.InteractiveBrokerService;
+import com.fmax.prototype.services.ordermanagement.OrderManagementService;
 
 
 
@@ -30,7 +32,8 @@ public class QuoteController {
 	@Autowired ExchangeMetadataService exchangeMetadataService;
 	@Autowired SecuritiesMasterService  securitiesMasterService;
 	@Autowired TradeCalculationService tradeCalculationService;
-	
+	@Autowired InteractiveBrokerService interactiveBrokerService;
+	@Autowired OrderManagementService orderManagementService;
 	TradeGovernor tradeMonitor = new TradeGovernor();
 	TradeExecutiveConfiguration rbcParameters = initRBCParameters();
 	TradeExecutive rbcTradeExecutive;
@@ -38,7 +41,13 @@ public class QuoteController {
 
 	@PostConstruct 
 	private void initialize() {
-		rbcTradeExecutive = new TradeExecutive(tradeMonitor, rbcParameters, exchangeMetadataService, securitiesMasterService, tradeCalculationService) ;	
+		
+		rbcTradeExecutive = new TradeExecutive(tradeMonitor, 
+				                               rbcParameters, 
+				                               exchangeMetadataService, 
+				                               securitiesMasterService, 
+				                               tradeCalculationService,
+				                               orderManagementService) ;	
 	}
 	
 	protected TradeExecutiveConfiguration initRBCParameters() {

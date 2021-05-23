@@ -50,6 +50,11 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+		<dependency>
+			<groupId>com.interactivebrokers</groupId>
+   			 <artifactId>tws-api</artifactId>
+    		<version>9.73.01-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
 
 	<build>

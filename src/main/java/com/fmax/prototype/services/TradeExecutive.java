@@ -44,7 +44,7 @@ import com.fmax.prototype.model.trade.StockOrderType;
 import com.fmax.prototype.services.ordermanagement.OrderManagementService;
 
 
-/** Current implementation ONLY looks at bids on the from the TSE and asks from the NYSE */
+
 public class TradeExecutive {
 	private static final Currency CAD_CURRENCY = Currency.getInstance("CAD");
 	private static final Currency US_CURRENCY = Currency.getInstance("USD");
@@ -70,7 +70,7 @@ public class TradeExecutive {
 	
 	//services
 	private final TradeGovernor 				tradeGovernor;
-	private final OrderManagementService        orderManagementService = new OrderManagementService(this);
+	private final OrderManagementService        orderManagementService;
 	private final SecuritiesMasterService       securitiesMasterService;
 	private final TradeCalculationService       tradeCalculationService;
 	
@@ -113,13 +113,15 @@ public class TradeExecutive {
 			              TradeExecutiveConfiguration tradeExecutiveConfiguration,
 			              ExchangeMetadataService exchangeMetadataService,
 			              SecuritiesMasterService securitiesMasterService,
-			              TradeCalculationService tradeCalculationService) 
+			              TradeCalculationService tradeCalculationService,
+			              OrderManagementService orderManagementService) 
 	{
 		this.tradeGovernor = tradeGovernor;
 		this.tradeExecutiveConfiguration = tradeExecutiveConfiguration;
 		this.securitiesMasterService = securitiesMasterService;
 		this.tradeCalculationService = tradeCalculationService;
-		
+		this.orderManagementService = orderManagementService;
+		 
 		stock = this.securitiesMasterService.getStock( tradeExecutiveConfiguration.getCusip() );
 		assert stock != null; // TODO fatal error
 				
@@ -146,7 +148,7 @@ public class TradeExecutive {
 		
 		activeBuyOrdersByDttmCreatedDescending = new PriorityQueue<>();
 		
-		// initialiase threads
+		// initialize threads
 		threadHandleEvents               = new Thread(this::pullEvents,  String.format("TradeExecutive-event-handler-%s", tradeExecutiveConfiguration.getCusip()) );
 		threadPullStockQuotes            = new Thread(this::pullStockQuote, "TradeExecutive-event-handler-stock-quotes");
 		threadPullForeignExchangeQuotes  = new Thread(this::pullForeignExchangeQuotes, "TradeExecutive-event-handler-foreign-exchange-quotes");
@@ -227,7 +229,6 @@ public class TradeExecutive {
 		//TODO BR-0005
 		// Verify correct stock quote
 		IStockQuote stockQuote = event.getStockQuote();
-		orderManagementService.push(stockQuote);
 		
 		boolean hedgeBestBidSizeChanged = false;
 		
