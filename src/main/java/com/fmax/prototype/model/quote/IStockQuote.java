@@ -17,6 +17,6 @@ public interface IStockQuote {
 
 	BigDecimal getAsk();
 
-	int getBidSize();
+	long getBidSize();
 
 }

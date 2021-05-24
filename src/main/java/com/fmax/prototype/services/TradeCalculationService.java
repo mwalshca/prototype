@@ -22,7 +22,7 @@ public class TradeCalculationService {
     }
     
     
-	public BigDecimal getMarketParticipationRatio(int buySharesOutstanding, int hedgeMarketBestBidSize) {	
+	public BigDecimal getMarketParticipationRatio(int buySharesOutstanding, long hedgeMarketBestBidSize) {	
 		if(0 == buySharesOutstanding) { //optimization - avoid division if numerator is zero
 			BigDecimal result = BigDecimal.ZERO.setScale(2);
 					//record.setResult(result);

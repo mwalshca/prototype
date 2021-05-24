@@ -11,7 +11,8 @@ public class StockQuote implements IStockQuote {
 	volatile String     symbol;
 	volatile BigDecimal bid;
 	volatile BigDecimal ask;
-	int                 bidSize;
+	long                askSize;
+	long                bidSize;
 	
 	@JsonFormat(pattern="yyyy-MM-dd HH:mm:ss")
     LocalDateTime dateTime;
@@ -25,14 +26,16 @@ public class StockQuote implements IStockQuote {
 		String     symbol,
 		BigDecimal bid,
 		BigDecimal ask,
-		int        bidSize,
+		long       bidSize,
+		long       askSize,
 		LocalDateTime dateTime)
 	{
-		this.ask = ask;
-		this.bid = bid;
 		this.exchange = exchange;
-		this.bidSize = bidSize;
 		this.symbol = symbol;
+		this.bid = bid;
+		this.ask = ask;
+		this.bidSize = bidSize;
+		this.askSize = askSize;
 		this.dateTime = dateTime;
 		}
 	
@@ -63,14 +66,54 @@ public class StockQuote implements IStockQuote {
 	}
 	
 	@Override
-	public int getBidSize() {
+	public long getBidSize() {
 		return bidSize;
+	}
+
+
+	public long getAskSize() {
+		return askSize;
+	}
+
+
+	public void setAskSize(long askSize) {
+		this.askSize = askSize;
+	}
+
+
+	public void setExchange(Exchange exchange) {
+		this.exchange = exchange;
+	}
+
+
+	public void setSymbol(String symbol) {
+		this.symbol = symbol;
+	}
+
+
+	public void setBid(BigDecimal bid) {
+		this.bid = bid;
+	}
+
+
+	public void setAsk(BigDecimal ask) {
+		this.ask = ask;
+	}
+
+
+	public void setBidSize(long bidSize) {
+		this.bidSize = bidSize;
+	}
+
+
+	public void setDateTime(LocalDateTime dateTime) {
+		this.dateTime = dateTime;
 	}
 
 
 	@Override
 	public String toString() {
-		return "StockQuote [exchange=" + exchange + ", symbol=" + symbol + ", bid=" + bid + ", ask=" + ask
-				+ ", bidSize=" + bidSize + ", dateTime=" + dateTime + "]";
-	}
+		return "StockQuote [exchange=" + exchange + ", isan=" + symbol + ", bid=" + bid + ", ask=" + ask
+				+ ", askSize=" + askSize + ", bidSize=" + bidSize + ", dateTime=" + dateTime + "]";
+	}	
 }

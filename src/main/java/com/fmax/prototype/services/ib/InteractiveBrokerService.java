@@ -2,6 +2,7 @@ package com.fmax.prototype.services.ib;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -181,15 +182,24 @@ public class InteractiveBrokerService  implements EWrapper {
     @Override
 	public void historicalTicksBidAsk(int reqId, List<HistoricalTickBidAsk> ticks, boolean done) {
     	System.out.println("\nHistorical ticksBidAsk\n");
+    	
+    	TickByTickHandler handler = tickByTickHandlersByRequestID.get(reqId);
+    	if(null==handler) {
+    		System.out.println("Info: handler not found for historicalTicksBidAsk request ID:" + reqId);
+    		return;
+    	}
+    	
     	for(HistoricalTickBidAsk tick:ticks) {
-    		Date date = new Date(tick.time() * 1000);
-    		System.out.printf(" %s Ask price:%f size:%d Bid price:%f Bid size:%d\n",
-    						  date.toString(),
-    						  tick.priceAsk(), 
-    						  tick.sizeAsk(), 
-    						  tick.priceBid(), 
-    						  tick.sizeBid()
-    						  );
+    		StockQuote quote = new StockQuote(
+    		        handler.exchange, 
+                    handler.symbol,
+                    BigDecimal.valueOf(tick.priceBid()),
+                    BigDecimal.valueOf(tick.priceAsk()),
+                    tick.sizeBid(),
+                    tick.sizeAsk(),
+                    LocalDateTime.ofInstant( new Date(tick.time()*1000).toInstant(), ZoneId.systemDefault() )
+                    ); 
+    		handler.quoteSink.accept(quote);
     	}
     	
     }
@@ -215,7 +225,9 @@ public class InteractiveBrokerService  implements EWrapper {
     			                          BigDecimal.valueOf(bidPrice),
     			                          BigDecimal.valueOf(askPrice),
     			                          bidSize,
-    			                          LocalDateTime.now()); //TOD take time from time passed In
+    			                          askSize,
+    			                          LocalDateTime.ofInstant( new Date(time*1000).toInstant(), ZoneId.systemDefault() )
+    			                          ); 
     	handler.quoteSink.accept(quote);
 	}
     

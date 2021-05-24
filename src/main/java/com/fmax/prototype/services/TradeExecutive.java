@@ -32,6 +32,7 @@ import com.fmax.prototype.events.StockOrderPlaced;
 import com.fmax.prototype.events.StockQuoteReceived;
 import com.fmax.prototype.model.Exchange;
 import com.fmax.prototype.model.ExchangeMetadata;
+import com.fmax.prototype.model.ISAN;
 import com.fmax.prototype.model.Instance;
 import com.fmax.prototype.model.Stock;
 import com.fmax.prototype.model.configuration.TradeExecutiveConfiguration;
@@ -88,7 +89,7 @@ public class TradeExecutive {
     
     // configuration - set during construction
     private final TradeExecutiveConfiguration   tradeExecutiveConfiguration;
-    private final Stock      		stock;
+    private  Stock      		stock;
     private final Exchange   		postExchange;  
     private final Exchange   		hedgeExchange; 
     private final BigDecimal 		cdnAveragePostingRatio;
@@ -122,7 +123,7 @@ public class TradeExecutive {
 		this.tradeCalculationService = tradeCalculationService;
 		this.orderManagementService = orderManagementService;
 		 
-		stock = this.securitiesMasterService.getStock( tradeExecutiveConfiguration.getCusip() );
+		stock = this.securitiesMasterService.getStock( Exchange.TSE, new ISAN(stock.cusip) );
 		assert stock != null; // TODO fatal error
 				
 		postExchange = tradeExecutiveConfiguration.getBuyStockExchange();

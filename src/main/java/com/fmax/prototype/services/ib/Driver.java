@@ -11,11 +11,13 @@ import com.ib.client.ContractDetails;
 import com.ib.client.TagValue;
 import com.ib.client.Types.SecType;
 
+//TODO remove
 public class Driver {
-	//TODO remove
+	
 		public static void main(String[] args) throws Exception {
 			InteractiveBrokerService ibs = new InteractiveBrokerService();
 			startStream(ibs, "RY", "NYSE", "RY");
+			startFxStream(ibs);
 			
 		//    startStream(ibs, "TLRY", "SMART", "TLRY");
 		  //  startStream(ibs, "BLDP", "SMART", "BLDP");
@@ -45,22 +47,39 @@ public class Driver {
 			
 			future = ibs.getContractDetails(contract);
 			ContractDetails usCD = future.get(30, TimeUnit.SECONDS).get(0);
-			Contract usContract = cadCD.contract();
+			Contract usContract = usCD.contract();
 			dump( future.get() );
 			ibs.reqTickByTickData(usContract, Driver::accept);
-			
-			
 		}
+		
 		
 		public static void accept(StockQuote stockQuote) {
 			System.out.println("Quote received:" + stockQuote.toString());
 		}
 		
+		
+		public static void startFxStream(InteractiveBrokerService ibs) throws Exception{
+			Contract contract = new Contract();
+			contract = new Contract();
+			contract.symbol("USD");
+			contract.secType(SecType.CASH);
+			contract.exchange("IDEALPRO");
+			contract.currency("CAD");
+			
+			Future<List<ContractDetails>> future = ibs.getContractDetails(contract);	
+			dump( future.get(30, TimeUnit.SECONDS) );
+		}
+		
+		
 		public static void dump(List<ContractDetails> cds) {
+			if(null==cds)
+				System.out.println("\n null contract details\n");
 			
 			for(ContractDetails cd:cds) {
-				for(TagValue tv: cd.secIdList())
-					System.out.println(" iD:" + tv.m_tag + " " + tv.m_value);
+				if(cd.secIdList() != null) {
+					for(TagValue tv: cd.secIdList())
+						System.out.println(" iD:" + tv.m_tag + " " + tv.m_value);
+				}
 				System.out.println("contract details toString():");
 				System.out.println(cd);
 				
