@@ -1,26 +1,26 @@
 package com.fmax.prototype.model;
 
-public class ISAN {
-	String sISAN;
+public class ISIN {
+	String sISIN;
 	
-	public ISAN(String sISAN) {
-		this.sISAN = sISAN;
+	public ISIN(String sISAN) {
+		this.sISIN = sISAN;
 	}
 
 	public String getsISAN() {
-		return sISAN;
+		return sISIN;
 	}
 
 	@Override
 	public String toString() {
-		return sISAN;
+		return sISIN;
 	}
 	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((sISAN == null) ? 0 : sISAN.hashCode());
+		result = prime * result + ((sISIN == null) ? 0 : sISIN.hashCode());
 		return result;
 	}
 
@@ -32,11 +32,11 @@ public class ISAN {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		ISAN other = (ISAN) obj;
-		if (sISAN == null) {
-			if (other.sISAN != null)
+		ISIN other = (ISIN) obj;
+		if (sISIN == null) {
+			if (other.sISIN != null)
 				return false;
-		} else if (!sISAN.equals(other.sISAN))
+		} else if (!sISIN.equals(other.sISIN))
 			return false;
 		return true;
 	}

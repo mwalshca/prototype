@@ -5,7 +5,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import com.fmax.prototype.model.Exchange;
+import com.fmax.prototype.model.ISIN;
+import com.fmax.prototype.model.Stock;
 import com.fmax.prototype.model.quote.StockQuote;
+import com.fmax.prototype.services.SecuritiesMasterService;
 import com.ib.client.Contract;
 import com.ib.client.ContractDetails;
 import com.ib.client.TagValue;
@@ -13,11 +16,18 @@ import com.ib.client.Types.SecType;
 
 //TODO remove
 public class Driver {
-	
+		// ISIN's:
+		// RBC CA7800871021
 		public static void main(String[] args) throws Exception {
 			InteractiveBrokerService ibs = new InteractiveBrokerService();
-			startStream(ibs, "RY", "NYSE", "RY");
-			startFxStream(ibs);
+			SecuritiesMasterService sms = new SecuritiesMasterService(ibs);
+			
+			//Stock ryTSE = sms.getStock(Exchange.TSE, "RY");
+			Stock ryNYSE = sms.getStock(Exchange.NYSE, "RY");
+			
+			//	Stock rbcTSEStock = sms.getStock(Echange, null)
+			// startStream(ibs, "RY", "NYSE", "RY");
+			//startFxStream(ibs);
 			
 		//    startStream(ibs, "TLRY", "SMART", "TLRY");
 		  //  startStream(ibs, "BLDP", "SMART", "BLDP");

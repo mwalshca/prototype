@@ -121,7 +121,7 @@ public class TradeExecutiveConfiguration {
 	@Override
 	public String toString() {
 		return "TradeExecutiveConfiguration [buyStockExchange=" + buyStockExchange + ", sellStockExchange="
-				+ sellStockExchange + ", cusip=" + cusip + ", defaultBidSize=" + defaultBidSize + ", defaultAskSize="
+				+ sellStockExchange + ", isn=" + cusip + ", defaultBidSize=" + defaultBidSize + ", defaultAskSize="
 				+ defaultAskSize + ", netProfitPerShareCDN=" + netProfitPerShareCDN + ", cancelLeewayPerShareCDN="
 				+ cancelLeewayPerShareCDN + ", netProfitPerShareUS=" + netProfitPerShareUS + ", cancelLeewayPerShareUS="
 				+ cancelLeewayPerShareUS + ", mininumCdnBidPostingRatio=" + mininumCdnBidPostingRatio

@@ -1,19 +1,30 @@
 package com.fmax.prototype.model;
 
+import java.util.Objects;
+
 public class Stock {
-	public final String cusip;	
-	public final String tseSymbol;
-	public final String nyseSymbol;
+	private Exchange exchange;
+	private	String   symbol;
+	private ISIN     isin;
 	
-	public Stock(String cusip, String tseSymbol, String nyseSymbol) {
-		assert cusip != null;
-		this.cusip = cusip;
-		this.tseSymbol = tseSymbol;
-		this.nyseSymbol = nyseSymbol;
+	public Stock(Exchange exchange, String symbol, ISIN isin) {
+		this.exchange = Objects.requireNonNull(exchange);
+		this.symbol = Objects.requireNonNull(symbol);
+		this.isin = Objects.requireNonNull(isin);
 	}
 
-	@Override
-	public String toString() {
-		return "Stock [cusip=" + cusip + ", tseSymbol=" + tseSymbol + ", nyseSymbol=" + nyseSymbol + "]";
+	
+	public Exchange getExchange() {
+		return exchange;
+	}
+
+	
+	public String getSymbol() {
+		return symbol;
+	}
+
+	
+	public ISIN getIsin() {
+		return isin;
 	}
 }

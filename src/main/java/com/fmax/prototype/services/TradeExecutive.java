@@ -32,7 +32,7 @@ import com.fmax.prototype.events.StockOrderPlaced;
 import com.fmax.prototype.events.StockQuoteReceived;
 import com.fmax.prototype.model.Exchange;
 import com.fmax.prototype.model.ExchangeMetadata;
-import com.fmax.prototype.model.ISAN;
+import com.fmax.prototype.model.ISIN;
 import com.fmax.prototype.model.Instance;
 import com.fmax.prototype.model.Stock;
 import com.fmax.prototype.model.configuration.TradeExecutiveConfiguration;
@@ -123,7 +123,7 @@ public class TradeExecutive {
 		this.tradeCalculationService = tradeCalculationService;
 		this.orderManagementService = orderManagementService;
 		 
-		stock = this.securitiesMasterService.getStock( Exchange.TSE, new ISAN(stock.cusip) );
+		
 		assert stock != null; // TODO fatal error
 				
 		postExchange = tradeExecutiveConfiguration.getBuyStockExchange();

@@ -13,7 +13,7 @@ import com.fmax.prototype.services.TradeCalculationService;
 
 //TODO make Spring-compatible
 class TradeCalculationServiceCompareBuyOrderByDttmCreated {
-	
+	/*
 	@Test
 	void bothNull() {
 		StockOrder lhs = null;
@@ -93,5 +93,5 @@ class TradeCalculationServiceCompareBuyOrderByDttmCreated {
 		
 		int results = TradeCalculationService.compateBuyOrderByDttmCreatedDescending(lhs, rhs);
 		org.junit.jupiter.api.Assertions.assertEquals(1, results); 
-	}
+	}*/
 }
