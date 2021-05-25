@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 
-import com.fmax.prototype.model.Exchange;
 import com.fmax.prototype.model.Stock;
 
 public abstract class StockOrder {
@@ -14,16 +13,14 @@ public abstract class StockOrder {
 	int quantityOrdered;
 	final BigDecimal postingPrice;
 	final StockOrderType type;
-	final Exchange exchange;
 	final Stock stock;
 	final LocalDateTime dttmCreated;
 	LocalDateTime dttmAccepted;
 	
 	OrderStatus status = OrderStatus.TO_BE_PLACED;
 	
-	protected StockOrder(StockOrderType type, Exchange exchange, Stock security, int quantityOrdered, BigDecimal postingPrice) {
+	protected StockOrder(StockOrderType type,Stock security, int quantityOrdered, BigDecimal postingPrice) {
 		this.type = type;
-		this.exchange = exchange;
 		this.stock = security;
 		this.dttmCreated = LocalDateTime.now();
 		this.quantityOrdered = quantityOrdered;
@@ -31,9 +28,8 @@ public abstract class StockOrder {
 	}
 	
 	/** mostly for unit tests */
-	protected StockOrder(StockOrderType type, Exchange exchange, Stock security, int quantityOrdered, BigDecimal postingPrice, LocalDateTime dttmCreated) {
+	protected StockOrder(StockOrderType type, Stock security, int quantityOrdered, BigDecimal postingPrice, LocalDateTime dttmCreated) {
 		this.type = type;
-		this.exchange = exchange;
 		this.stock = security;
 		this.dttmCreated = LocalDateTime.now();
 		this.quantityOrdered = quantityOrdered;
@@ -50,10 +46,6 @@ public abstract class StockOrder {
 
 	public OrderStatus getStatus() {
 		return status;
-	}
-
-	public Exchange getExchange() {
-		return exchange;
 	}
 
 	public Stock getStock() {
@@ -100,7 +92,7 @@ public abstract class StockOrder {
 	@Override
 	public String toString() {
 		return "StockOrder [id=" + id + ", quantityOrdered=" + quantityOrdered + ", postingPrice=" + postingPrice
-				+ ", type=" + type + ", exchange=" + exchange + ", stock=" + stock + ", dttmCreated=" + dttmCreated
-				+ ", dttmAccepted=" + dttmAccepted + ", status=" + status + "]";
+				+ ", type=" + type + ", stock=" + stock + ", dttmCreated=" + dttmCreated + ", dttmAccepted="
+				+ dttmAccepted + ", status=" + status + "]";
 	}
 }

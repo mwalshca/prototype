@@ -84,7 +84,6 @@ public class SecuritiesMasterService {
 		return Optional.empty();
 	}
 	
-	
 	private static class StockKey {
 		Exchange exchange;
 		String   symbol;

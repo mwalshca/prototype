@@ -3,13 +3,11 @@ package com.fmax.prototype.model.quote;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import com.fmax.prototype.model.Exchange;
+import com.fmax.prototype.model.Stock;
 
 public interface IStockQuote {
 
-	Exchange getExchange();
-
-	String getSymbol();
+	Stock getStock();
 
 	LocalDateTime getDateTime();
 

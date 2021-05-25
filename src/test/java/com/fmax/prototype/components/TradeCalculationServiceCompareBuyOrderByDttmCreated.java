@@ -1,16 +1,5 @@
 package com.fmax.prototype.components;
 
-import java.math.BigDecimal;
-import java.time.temporal.ChronoUnit;
-
-import org.junit.jupiter.api.Test;
-
-import com.fmax.prototype.model.Exchange;
-import com.fmax.prototype.model.Stock;
-import com.fmax.prototype.model.trade.BuyOrder;
-import com.fmax.prototype.model.trade.StockOrder;
-import com.fmax.prototype.services.TradeCalculationService;
-
 //TODO make Spring-compatible
 class TradeCalculationServiceCompareBuyOrderByDttmCreated {
 	/*

@@ -16,9 +16,12 @@ import java.util.concurrent.Future;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
-import com.fmax.prototype.model.Exchange;
-import com.fmax.prototype.model.quote.QuoteSink;
+import com.fmax.prototype.model.ForeignExchangePair;
+import com.fmax.prototype.model.Stock;
+import com.fmax.prototype.model.quote.ForeignExchangeQuote;
+import com.fmax.prototype.model.quote.ForeignExchangeQuoteSink;
 import com.fmax.prototype.model.quote.StockQuote;
+import com.fmax.prototype.model.quote.StockQuoteSink;
 import com.ib.client.Bar;
 import com.ib.client.CommissionReport;
 import com.ib.client.Contract;
@@ -42,9 +45,11 @@ import com.ib.client.Order;
 import com.ib.client.OrderState;
 import com.ib.client.PriceIncrement;
 import com.ib.client.SoftDollarTier;
+import com.ib.client.TagValue;
 import com.ib.client.TickAttrib;
 import com.ib.client.TickAttribBidAsk;
 import com.ib.client.TickAttribLast;
+import com.ib.client.Types.SecType;
 
 @Scope("singleton")
 @Service
@@ -63,8 +68,8 @@ public class InteractiveBrokerService  implements EWrapper {
     private int requestId = 1942;
     
     private Map<Integer, ContractDetailsScratchPad> contractDetailsInProgress = new HashMap<>();
-   
-    private Map<Integer, TickByTickHandler> tickByTickHandlersByRequestID = new HashMap<>();
+    private Map<Integer, TickByTickHandler<Stock, StockQuoteSink>> stockTickByTickHandlersByRequestID = new HashMap<>();
+    private Map<Integer, TickByTickHandler<ForeignExchangePair, ForeignExchangeQuoteSink>> fxTickByTickHandlersByRequestID = new HashMap<>();
     
     public InteractiveBrokerService() {
     	 client = new EClientSocket(this, readerSignal);
@@ -94,6 +99,8 @@ public class InteractiveBrokerService  implements EWrapper {
 			}
 		}
 	}
+	
+	
     @Override
 	public void error(Exception arg0) {
 		System.out.println("error()"+ arg0);
@@ -154,82 +161,128 @@ public class InteractiveBrokerService  implements EWrapper {
    	}
     
    
-    private static class TickByTickHandler {
-    	QuoteSink quoteSink;
-    	Exchange  exchange;
-		String    symbol;
+    private static class TickByTickHandler<SEC,SINK> {
+    	TickByTickHandler(SEC security, SINK sink){
+    		this.security = security;
+    		this.sink = sink;
+    	}
+    	SEC security;
+    	SINK sink;
     }
 
     
-    public void reqTickByTickData(Contract 	contract, QuoteSink quoteSink) throws IllegalArgumentException
-    {
+    public void reqTickByTickData(Stock stock, StockQuoteSink quoteSink) {
     	final int myRequestId = requestId++;	
-    	final TickByTickHandler handler = new TickByTickHandler();
+    	final TickByTickHandler<Stock,StockQuoteSink> handler = new TickByTickHandler<>(stock, quoteSink);
+    	stockTickByTickHandlersByRequestID.put( myRequestId, handler);
     	
-    	handler.quoteSink = quoteSink;
-	    handler.exchange = Exchange.valueOf( contract.exchange() );
-	    handler.symbol = contract.localSymbol();
-	    
-    	tickByTickHandlersByRequestID.put( myRequestId, handler);
-    	
-    	client.reqTickByTickData(myRequestId, 
-    			                 contract, 
-    			                 "BidAsk", 
-    			                 16,
-    			                 true);
+    	Contract contract = new Contract();
+    	contract.secType(  SecType.STK );		
+		contract.exchange( stock.getExchange().toString());
+		contract.symbol( stock.getSymbol() );
+		contract.currency( stock.getExchange().currency());
+		
+		client.reqTickByTickData(myRequestId, 
+                contract, 
+                "BidAsk", 
+                16,
+                true);
     }
+    
+    
+	public void reqTickByTickData(ForeignExchangePair fxPair, ForeignExchangeQuoteSink sink) {
+		final int myRequestId = requestId++;
+		final TickByTickHandler<ForeignExchangePair,ForeignExchangeQuoteSink> handler = new TickByTickHandler<>(fxPair,sink);
+		
+		fxTickByTickHandlersByRequestID.put(myRequestId, handler);
+		
+		Contract contract = new Contract();
+		contract.secType("CASH");
+		contract.exchange("IDEALPRO");
+		contract.symbol( fxPair.getBaseCurrency().toString());
+		contract.currency(fxPair.getQuoteCurrency().toString());
+		
+		client.reqTickByTickData(myRequestId, 
+                contract, 
+                "BidAsk", 
+                0,
+                true);
+	}
+    
     
     @Override
 	public void historicalTicksBidAsk(int reqId, List<HistoricalTickBidAsk> ticks, boolean done) {
     	System.out.println("\nHistorical ticksBidAsk\n");
     	
-    	TickByTickHandler handler = tickByTickHandlersByRequestID.get(reqId);
-    	if(null==handler) {
-    		System.out.println("Info: handler not found for historicalTicksBidAsk request ID:" + reqId);
+    	TickByTickHandler<Stock, StockQuoteSink> stockHandler = stockTickByTickHandlersByRequestID.get(reqId);
+    	if(stockHandler != null) {
+    		for(HistoricalTickBidAsk tick:ticks) {
+        		StockQuote quote = new StockQuote(
+        		        stockHandler.security,
+                        BigDecimal.valueOf(tick.priceBid()),
+                        BigDecimal.valueOf(tick.priceAsk()),
+                        tick.sizeBid(),
+                        tick.sizeAsk(),
+                        LocalDateTime.ofInstant( new Date(tick.time()*1000).toInstant(), ZoneId.systemDefault() )
+                        ); 
+        		stockHandler.sink.accept(quote);
+        	}
     		return;
     	}
     	
-    	for(HistoricalTickBidAsk tick:ticks) {
-    		StockQuote quote = new StockQuote(
-    		        handler.exchange, 
-                    handler.symbol,
-                    BigDecimal.valueOf(tick.priceBid()),
-                    BigDecimal.valueOf(tick.priceAsk()),
-                    tick.sizeBid(),
-                    tick.sizeAsk(),
-                    LocalDateTime.ofInstant( new Date(tick.time()*1000).toInstant(), ZoneId.systemDefault() )
-                    ); 
-    		handler.quoteSink.accept(quote);
+    	TickByTickHandler<ForeignExchangePair, ForeignExchangeQuoteSink> fxHandler = fxTickByTickHandlersByRequestID.get(reqId);
+    	if(fxHandler != null) {
+    		for(HistoricalTickBidAsk tick:ticks) {
+    			ForeignExchangeQuote quote = new ForeignExchangeQuote(
+    					fxHandler.security,
+                        BigDecimal.valueOf(tick.priceBid()),
+                        BigDecimal.valueOf(tick.priceAsk()),
+                        LocalDateTime.ofInstant( new Date(tick.time()*1000).toInstant(), ZoneId.systemDefault() )
+                        ); 
+    			fxHandler.sink.accept(quote);
+        	}
+    		return;
     	}
-    	
+    	System.out.println("Info: handler not found for historicalTicksBidAsk request ID:" + reqId);
     }
     
+
     @Override
-	public void tickByTickBidAsk(
-			int reqId, 
-			long time, 
-			double bidPrice, 
-			double askPrice, 
-			int bidSize, 
-			int askSize, 
-			TickAttribBidAsk tickAttribBidAsk) {
-    	
-    	TickByTickHandler handler = tickByTickHandlersByRequestID.get(reqId);
-    	if(null==handler) {
-    		System.err.println("Error: handler not found for tickByTick request ID:" + reqId);
+    public void tickByTickBidAsk(
+    		int reqId, 
+    		long time, 
+    		double bidPrice, 
+    		double askPrice, 
+    		int bidSize, 
+    		int askSize, 
+    		TickAttribBidAsk tickAttribBidAsk) {
+
+    	TickByTickHandler<Stock, StockQuoteSink> stockHandler = stockTickByTickHandlersByRequestID.get(reqId);
+    	if(stockHandler != null) {
+    		StockQuote quote = new StockQuote(stockHandler.security,
+    				BigDecimal.valueOf(bidPrice),
+    				BigDecimal.valueOf(askPrice),
+    				bidSize,
+    				askSize,
+    				LocalDateTime.ofInstant( new Date(time*1000).toInstant(), ZoneId.systemDefault() )
+    				); 
+    		stockHandler.sink.accept(quote);
     		return;
     	}
+
+    	TickByTickHandler<ForeignExchangePair, ForeignExchangeQuoteSink> fxHandler = fxTickByTickHandlersByRequestID.get(reqId);
+    	if(fxHandler != null) {
+    		ForeignExchangeQuote quote = new ForeignExchangeQuote(
+    				fxHandler.security,
+    				BigDecimal.valueOf(bidPrice),
+    				BigDecimal.valueOf(askPrice),
+    				LocalDateTime.ofInstant( new Date(time*1000).toInstant(), ZoneId.systemDefault() )
+    				); 
+    		fxHandler.sink.accept(quote);
+    	}
+    	return;
+    }
     	
-    	StockQuote quote = new StockQuote(handler.exchange, 
-    			                          handler.symbol,
-    			                          BigDecimal.valueOf(bidPrice),
-    			                          BigDecimal.valueOf(askPrice),
-    			                          bidSize,
-    			                          askSize,
-    			                          LocalDateTime.ofInstant( new Date(time*1000).toInstant(), ZoneId.systemDefault() )
-    			                          ); 
-    	handler.quoteSink.accept(quote);
-	}
     
     
 	@Override
@@ -588,4 +641,20 @@ public class InteractiveBrokerService  implements EWrapper {
 	public void verifyMessageAPI(String arg0) {
 	}
 
+	
+	public static void dump(List<ContractDetails> cds) {
+		if(null==cds)
+			System.out.println("\n null contract details\n");
+		
+		for(ContractDetails cd:cds) {
+			if(cd.secIdList() != null) {
+				for(TagValue tv: cd.secIdList())
+					System.out.println(" iD:" + tv.m_tag + " " + tv.m_value);
+			}
+			System.out.println("contract details toString():");
+			System.out.println(cd);
+			
+		}	
+	}
+	
 }

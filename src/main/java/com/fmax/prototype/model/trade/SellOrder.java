@@ -8,14 +8,7 @@ import com.fmax.prototype.model.Stock;
 
 public class SellOrder extends StockOrder {
 	
-	public SellOrder(Exchange exchange, Stock security, int quantityOrdered, BigDecimal postingPrice) {
-		super(StockOrderType.SELL, exchange, security, quantityOrdered, postingPrice);
-	}
-
-	@Override
-	public String toString() {
-		return "SellOrder [id=" + id + ", quantityOrdered=" + quantityOrdered + ", postingPrice=" + postingPrice
-				+ ", type=" + type + ", exchange=" + exchange + ", stock=" + stock + ", dttmCreated=" + dttmCreated
-				+ ", dttmAccepted=" + dttmAccepted + ", status=" + status + "]";
+	public SellOrder(Exchange exchange, Stock stock, int quantityOrdered, BigDecimal postingPrice) {
+		super(StockOrderType.SELL,  stock, quantityOrdered, postingPrice);
 	}
 }

@@ -3,9 +3,8 @@ package com.fmax.prototype.model;
 import java.math.BigDecimal;
 
 public class Instance {
-	final Exchange   buyExchange;
-	final Exchange   hedgeExchange;
-	final Stock      stock;
+	final Stock      buyStock;
+	final Stock      sellStock;
 	
 	final BigDecimal buyPostingPrice;
 	final int        buyInitialPostingSize;
@@ -18,17 +17,15 @@ public class Instance {
 	int   sharesHeld;
 	
 	public Instance(
-			Exchange   buyExchange,
-			Exchange   hedgeExchange,
-			Stock      stock,
+			Stock      buyStock,
+			Stock      sellStock,
 			BigDecimal buyPostingPrice,
 			BigDecimal reflexPrice, //a.k.a. the hedge price
 			BigDecimal cancelPrice,
 			int        buyPostingSize) 
 	{
-		this.buyExchange = buyExchange;
-		this.hedgeExchange = hedgeExchange;
-		this.stock = stock;
+		this.buyStock = buyStock;
+		this.sellStock = sellStock;
 		this.buyPostingPrice = buyPostingPrice;
 		this.reflexPrice = reflexPrice;
 		this.cancelPrice = cancelPrice;
@@ -62,9 +59,8 @@ public class Instance {
 	
 	
 	protected void checkInvariant() {
-		assert buyExchange != null;
-		assert hedgeExchange != null;
-		assert stock != null;
+		assert buyStock != null;
+		assert sellStock != null;
 		assert buyPostingPrice != null;
 		assert reflexPrice != null;
 		//FIXME assert cancelPrice != null;
@@ -93,22 +89,6 @@ public class Instance {
 		return sharesHeld;
 	}
 
-	
-	public Exchange getBuyExchange() {
-		return buyExchange;
-	}
-
-
-	public Exchange getHedgeExchange() {
-		return hedgeExchange;
-	}
-
-
-	public Stock getStock() {
-		return stock;
-	}
-
-
 	public BigDecimal getBuyPostingPrice() {
 		return buyPostingPrice;
 	}
@@ -129,13 +109,17 @@ public class Instance {
 	}
 
 
-	@Override
-	public String toString() {
-		return "Instance [buyExchange=" + buyExchange + ", hedgeExchange=" + hedgeExchange + ", stock=" + stock
-				+ ", buyPostingPrice=" + buyPostingPrice + ", buyInitialPostingSize=" + buyInitialPostingSize
-				+ ", reflexPrice=" + reflexPrice + ", cancelPrice=" + cancelPrice + ", sharesBought=" + sharesBought
-				+ ", sharesSold=" + sharesSold + ", sharesHeld=" + sharesHeld + "]";
+	public Stock getBuyStock() {
+		return buyStock;
 	}
-	
-	
+
+
+	public Stock getSellStock() {
+		return sellStock;
+	}
+
+
+	public int getBuyInitialPostingSize() {
+		return buyInitialPostingSize;
+	}	
 }

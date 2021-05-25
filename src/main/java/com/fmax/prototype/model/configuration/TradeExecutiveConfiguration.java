@@ -5,13 +5,14 @@ import java.math.BigDecimal;
 import org.springframework.stereotype.Component;
 
 import com.fmax.prototype.model.Exchange;
+import com.fmax.prototype.model.ISIN;
 
 @Component
 public class TradeExecutiveConfiguration {
 	Exchange   buyStockExchange;
 	Exchange   sellStockExchange;
 	
-	String     cusip;
+	ISIN       isin;
 	int 	   defaultBidSize                 = 100;
 	int 	   defaultAskSize                 = 100;
 	BigDecimal netProfitPerShareCDN ;
@@ -37,15 +38,7 @@ public class TradeExecutiveConfiguration {
 	public void setSellStockExchange(Exchange sellStockExchange) {
 		this.sellStockExchange = sellStockExchange;
 	}
-
-	public String getCusip() {
-		return cusip;
-	}
-
-	public void setCusip(String cusip) {
-		this.cusip = cusip;
-	}
-
+	
 	public int getDefaultBidSize() {
 		return defaultBidSize;
 	}
@@ -118,17 +111,21 @@ public class TradeExecutiveConfiguration {
 		this.stopLossAmount = stopLossAmount;
 	}
 
+	public ISIN getISIN() {
+		return isin;
+	}
+
+	public void setISIN(ISIN isin) {
+		this.isin = isin;
+	}
+
 	@Override
 	public String toString() {
 		return "TradeExecutiveConfiguration [buyStockExchange=" + buyStockExchange + ", sellStockExchange="
-				+ sellStockExchange + ", isn=" + cusip + ", defaultBidSize=" + defaultBidSize + ", defaultAskSize="
+				+ sellStockExchange + ", isin=" + isin + ", defaultBidSize=" + defaultBidSize + ", defaultAskSize="
 				+ defaultAskSize + ", netProfitPerShareCDN=" + netProfitPerShareCDN + ", cancelLeewayPerShareCDN="
 				+ cancelLeewayPerShareCDN + ", netProfitPerShareUS=" + netProfitPerShareUS + ", cancelLeewayPerShareUS="
 				+ cancelLeewayPerShareUS + ", mininumCdnBidPostingRatio=" + mininumCdnBidPostingRatio
 				+ ", maxiumCdnBidPostingRatio=" + maxiumCdnBidPostingRatio + ", stopLossAmount=" + stopLossAmount + "]";
 	}
-
-	
-
-	
 }

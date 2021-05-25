@@ -2,6 +2,6 @@ package com.fmax.prototype.model.quote;
 
 
 @FunctionalInterface
-public interface QuoteSink {
+public interface StockQuoteSink {
 	void accept(StockQuote stockQuote);
 }
