@@ -1,17 +1,24 @@
 package com.fmax.prototype.events;
 
-import com.fmax.prototype.model.quote.IForeignExchangeQuote;
+import javax.persistence.DiscriminatorValue;
+import javax.persistence.Embedded;
+import javax.persistence.Entity;
 
+import com.fmax.prototype.model.quote.ForeignExchangeQuote;
+
+@Entity
+@DiscriminatorValue("FOREIGN_EXCHANGE_QUOTE_RECEIVED")
 public class ForeignExchangeQuoteReceived extends Event {
 
-	final IForeignExchangeQuote foreignExchangeQuote;
+	@Embedded
+	ForeignExchangeQuote foreignExchangeQuote;
 	
-	public ForeignExchangeQuoteReceived(IForeignExchangeQuote foreignExchangeQuote) {
+	public ForeignExchangeQuoteReceived(ForeignExchangeQuote foreignExchangeQuote) {
 		super(EventType.FOREIGN_EXCHANGE_QUOTE_RECEIVED);
 		this.foreignExchangeQuote = foreignExchangeQuote;
 	}
 	
-	public IForeignExchangeQuote getForeignExchangeQuote() {
+	public ForeignExchangeQuote getForeignExchangeQuote() {
 		return foreignExchangeQuote;
 	}
 
