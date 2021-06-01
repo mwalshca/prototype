@@ -2,9 +2,12 @@ package com.fmax.prototype.model;
 
 import java.math.BigDecimal;
 
-public class Instance {
-	final Stock      buyStock;
-	final Stock      sellStock;
+import com.fmax.prototype.services.TradeExecutive;
+
+public class Arbitrage {
+	final TradeExecutive tradeExecutive;
+	final Stock          buyStock;
+	final Stock          sellStock;
 	
 	final BigDecimal buyPostingPrice;
 	final int        buyInitialPostingSize;
@@ -16,7 +19,8 @@ public class Instance {
 	int   sharesSold;
 	int   sharesHeld;
 	
-	public Instance(
+	public Arbitrage(
+			TradeExecutive tradeExecutive,
 			Stock      buyStock,
 			Stock      sellStock,
 			BigDecimal buyPostingPrice,
@@ -24,6 +28,7 @@ public class Instance {
 			BigDecimal cancelPrice,
 			int        buyPostingSize) 
 	{
+		this.tradeExecutive = tradeExecutive;
 		this.buyStock = buyStock;
 		this.sellStock = sellStock;
 		this.buyPostingPrice = buyPostingPrice;

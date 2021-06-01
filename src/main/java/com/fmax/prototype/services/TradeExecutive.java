@@ -23,6 +23,7 @@ import java.util.logging.Logger;
 import com.fmax.prototype.common.AsyncLogger;
 import com.fmax.prototype.common.BusinessLogRecordFormattter;
 import com.fmax.prototype.common.CalculationLogRecord;
+import com.fmax.prototype.common.EventLogRecord;
 import com.fmax.prototype.events.Event;
 import com.fmax.prototype.events.ForeignExchangeQuoteReceived;
 import com.fmax.prototype.events.StockOrderAccepted;
@@ -30,18 +31,19 @@ import com.fmax.prototype.events.StockOrderCompleted;
 import com.fmax.prototype.events.StockOrderFilled;
 import com.fmax.prototype.events.StockOrderPlaced;
 import com.fmax.prototype.events.StockQuoteReceived;
+import com.fmax.prototype.model.Arbitrage;
 import com.fmax.prototype.model.Exchange;
 import com.fmax.prototype.model.ExchangeMetadata;
-import com.fmax.prototype.model.Instance;
 import com.fmax.prototype.model.Stock;
 import com.fmax.prototype.model.configuration.TradeExecutiveConfiguration;
+import com.fmax.prototype.model.quote.ForeignExchangeQuote;
 import com.fmax.prototype.model.quote.IForeignExchangeQuote;
 import com.fmax.prototype.model.quote.IStockQuote;
+import com.fmax.prototype.model.quote.StockQuote;
 import com.fmax.prototype.model.trade.BuyOrder;
 import com.fmax.prototype.model.trade.SellOrder;
 import com.fmax.prototype.model.trade.StockOrder;
 import com.fmax.prototype.model.trade.StockOrderType;
-import com.fmax.prototype.services.ordermanagement.OrderManagementService;
 
 
 
@@ -69,16 +71,17 @@ public class TradeExecutive {
 	}
 	
 	//services
-	private final TradeGovernor 				tradeGovernor;
-	private final OrderManagementService        orderManagementService;
-	private final TradeCalculationService       tradeCalculationService;
-	
+	private final TradeGovernor 		     tradeGovernor;
+	private final OrderManagementService     orderManagementService;
+	private final TradeCalculationService    tradeCalculationService;
+	private final CriticalEventService       eventService;
+	 
 	//Queue and thread to receive stock quotes
-	private final SynchronousQueue<IStockQuote> stockQuotesMessageQueue = new SynchronousQueue<>();
+	private final SynchronousQueue<StockQuote> stockQuotesMessageQueue = new SynchronousQueue<>();
 	private final Thread threadPullStockQuotes;
 	  
 	// Queue and thread to receive foreign exchange quotes
-    private final SynchronousQueue<IForeignExchangeQuote> currencyQuotesMessageQueue = new SynchronousQueue<>();
+    private final SynchronousQueue<ForeignExchangeQuote> currencyQuotesMessageQueue = new SynchronousQueue<>();
     private final Thread threadPullForeignExchangeQuotes;
     
     // internal event queue and thread to handle it
@@ -87,8 +90,8 @@ public class TradeExecutive {
     
     // configuration - set during construction
     private final TradeExecutiveConfiguration   tradeExecutiveConfiguration;
-    private Stock cdnStock;
-    private Stock usStock;
+    private Stock buyStock;
+    private Stock sellStock;
     private final Exchange   		postExchange;  
     private final Exchange   		hedgeExchange; 
     private final BigDecimal 		cdnAveragePostingRatio;
@@ -101,12 +104,12 @@ public class TradeExecutive {
 	
     private final ConcurrentHashMap<Long,StockOrder>   stockOrdersById = new ConcurrentHashMap<>();
 	
-    private final ConcurrentHashMap<Long,Instance>	   tradesByStockOrderId = new ConcurrentHashMap<>();
-    private final LinkedList<Instance>                 activeTrades = new LinkedList<>();
-	private final HashSet<Instance>                    completedTrades = new HashSet<>();
+    private final ConcurrentHashMap<Long,Arbitrage>	 arbitragesByStockOrderId = new ConcurrentHashMap<>();
+    private final LinkedList<Arbitrage>              activeTrades = new LinkedList<>();
+	private final HashSet<Arbitrage>                 completedTrades = new HashSet<>();
 	
 	// A priority queue contain all active BuyOrders, ordered by DttmCreated, descending i.e. newest orders are first
-	private final PriorityQueue<BuyOrder>              activeBuyOrdersByDttmCreatedDescending;
+	private final PriorityQueue<BuyOrder>              activeBuyOrdersByDttmCreatedDescending =  new PriorityQueue<>();;
 	
 	
 	public TradeExecutive(TradeGovernor tradeGovernor, 
@@ -114,26 +117,34 @@ public class TradeExecutive {
 			              TradeCalculationService tradeCalculationService,
 			              OrderManagementService orderManagementService,
 			              ExchangeMetadataService exchangeMetadataService,
-			              SecuritiesMasterService securityMasterService) 
+			              SecuritiesMasterService securityMasterService,
+			              QuoteService quoteService,
+			              CriticalEventService ces) 
 	{
-		this.tradeGovernor = tradeGovernor;
-		this.tradeExecutiveConfiguration = tradeExecutiveConfiguration;
 		this.tradeCalculationService = tradeCalculationService;
 		this.orderManagementService = orderManagementService;
-		 
-		postExchange = tradeExecutiveConfiguration.getBuyStockExchange();
-		hedgeExchange = tradeExecutiveConfiguration.getSellStockExchange();
+		this.eventService = ces;
+		this.tradeGovernor = tradeGovernor;
+		this.tradeExecutiveConfiguration = tradeExecutiveConfiguration;
 		
+		this.buyStock = Objects.requireNonNull(tradeExecutiveConfiguration.getBuyStock());
+		this.sellStock = Objects.requireNonNull(tradeExecutiveConfiguration.getSellStock());
 		
+		if(!buyStock.getIsin().equals(sellStock.getIsin())) {
+			System.err.println("TradeExecutive: ISIN's don't match");
+			throw new IllegalArgumentException("TradeExecutive: ISIN's don't match");
+		}
 		
+		this.tsxMetadata = exchangeMetadataService.get(Exchange.TSE);
+		this.nyseMetadata = exchangeMetadataService.get(Exchange.NYSE );
 		
+		this.postExchange = tradeExecutiveConfiguration.getBuyStock().getExchange();
+		this.hedgeExchange = tradeExecutiveConfiguration.getSellStock().getExchange();
 		
+		this.currentStockQuotes.put( postExchange, new AtomicReference<IStockQuote>() );
+		this.currentStockQuotes.put( hedgeExchange, new AtomicReference<IStockQuote>() );
 		
-		currentStockQuotes.put( postExchange, new AtomicReference<IStockQuote>() );
-		currentStockQuotes.put( hedgeExchange, new AtomicReference<IStockQuote>() );
-		
-		
-		cdnAveragePostingRatio = tradeExecutiveConfiguration.getMininumCdnBidPostingRatio()
+		this.cdnAveragePostingRatio = tradeExecutiveConfiguration.getMininumCdnBidPostingRatio()
 				                 .add( tradeExecutiveConfiguration.getMaxiumCdnBidPostingRatio())
 				                 .divide(TWO, TradeExecutive.MATH_CONTEXT_RATIO);
 		
@@ -144,13 +155,10 @@ public class TradeExecutive {
 		record.setResult( cdnAveragePostingRatio);
 		LOGGER.log(record);
 					
-		tsxMetadata = exchangeMetadataService.get(Exchange.TSE);
-		nyseMetadata = exchangeMetadataService.get(Exchange.NYSE );
 		
-		activeBuyOrdersByDttmCreatedDescending = new PriorityQueue<>();
 		
 		// initialize threads
-		threadHandleEvents               = new Thread(this::pullEvents,  String.format("TradeExecutive-event-handler-%s", tradeExecutiveConfiguration.getISIN().toString()) );
+		threadHandleEvents               = new Thread(this::pullEvents,  String.format("TradeExecutive-event-handler-%s-%s",buyStock.getExchange(), buyStock.getSymbol() ) );
 		threadPullStockQuotes            = new Thread(this::pullStockQuote, "TradeExecutive-event-handler-stock-quotes");
 		threadPullForeignExchangeQuotes  = new Thread(this::pullForeignExchangeQuotes, "TradeExecutive-event-handler-foreign-exchange-quotes");
 		
@@ -161,7 +169,10 @@ public class TradeExecutive {
 		threadPullStockQuotes.start();
 		threadPullForeignExchangeQuotes.start();
 		
-		// 
+		//start the stock streams
+		quoteService.startStream(buyStock,  this::push);
+		quoteService.startStream(sellStock, this::push);
+		
 	}
 	
 	
@@ -177,7 +188,8 @@ public class TradeExecutive {
 		while (true) {
 			try {
 				Event event = events.take();
-				LOGGER.info( String.format("\n----------------------------\nBegin processing event:%s\n",event) );
+				LOGGER.log( new EventLogRecord(event) );
+				eventService.push(event);
 				
 				switch (event.getEventType()) {
 				case STOCK_QUOTE_RECEIVED:
@@ -214,11 +226,11 @@ public class TradeExecutive {
 					LOGGER.info(String.format("Unsupported event:%s", event.getEventType()));
 					break;
 				}
-				LOGGER.info(String.format("\nEnd processing event:%s\n----------------------------\n\n",event.getEventType()) );
 			} catch (InterruptedException e) {
 				Thread.interrupted(); // reset the thread's interupted flag
 			} catch (RuntimeException ex) {
 				System.out.println("Danger Will Robinson!");
+				ex.printStackTrace();
 			}
 		}
 	}
@@ -230,7 +242,7 @@ public class TradeExecutive {
 		//TODO BR-0004
 		//TODO BR-0005
 		// Verify correct stock quote
-		IStockQuote stockQuote = event.getStockQuote();
+		StockQuote stockQuote = event.getStockQuote();
 		
 		boolean hedgeBestBidSizeChanged = false;
 		
@@ -243,7 +255,7 @@ public class TradeExecutive {
 			LOGGER.info( String.format( "Did hedgeBestBidSize change:%s", hedgeBestBidSizeChanged ) );
 		}
 		
-		currentStockQuotes.get( stockQuote.getStock()).set( stockQuote );
+		currentStockQuotes.get( stockQuote.getStock().getExchange()).set( stockQuote );
 		
 		if(hedgeBestBidSizeChanged) {
 			checkAndAdjustParticipation();
@@ -274,17 +286,15 @@ public class TradeExecutive {
 		}
 		assert order != null;
 		
-		final Instance trade = tradesByStockOrderId.get(order.getId());
+		final Arbitrage trade = arbitragesByStockOrderId.get(order.getId());
 		assert trade != null;
 		assert activeTrades.contains(trade);
 		
-		if(order.getStock().getExchange().equals(postExchange)) {
-			LOGGER.info( String.format("Buy stock order filled order id:%d # of shares filled: %d", event.getOrderId(),event.getnFilled() ));	
+		if(order.getStock().getExchange().equals(postExchange)) {	
 			trade.buyFilled( event.getnFilled() );
 			placeHedgeOrder( trade, event.getnFilled());
 		} 
 		else if(order.getStock().getExchange().equals(hedgeExchange)) {
-			LOGGER.info( String.format("Hedge  stock order filled order id:%d # of shares filled: %d", event.getOrderId(),event.getnFilled() ));	
 			trade.hedgeFilled( event.getnFilled( ));
 		}
 		else
@@ -310,8 +320,6 @@ public class TradeExecutive {
 		}
 		assert order != null;
 		order.placed();
-		
-		LOGGER.info( String.format("Stock order placed: %s", order.toString()));
 	}
 	
 	
@@ -326,8 +334,6 @@ public class TradeExecutive {
 		}
 		assert order != null;
 		order.accepted( event.getDttmAccepted() );
-		
-		LOGGER.info( String.format("Stock order accepted: %s", order));
 	}
 	
 	
@@ -343,15 +349,13 @@ public class TradeExecutive {
 		
 		order.completed();
 		
-		tradesByStockOrderId.remove(id);
+		arbitragesByStockOrderId.remove(id);
 		stockOrdersById.remove(id);
 		
 		if( order.getType() == StockOrderType.BUY) {
 			boolean removed = activeBuyOrdersByDttmCreatedDescending.remove(order);
 			assert removed;
 		}
-		
-		LOGGER.info( String.format("Stock order completed. Order: %s", order));	
 	}
 	
 	
@@ -425,7 +429,7 @@ public class TradeExecutive {
 			StockOrder buyOrder = iBuyOrders.next();
 			assert buyOrder != null;
 			
-			Instance trade = tradesByStockOrderId.get( buyOrder.getId() );
+			Arbitrage trade = arbitragesByStockOrderId.get( buyOrder.getId() );
 			assert trade != null;
 			if(buyOrder.getQuantityOrdered() > trade.getSharesBought()) {
 				
@@ -472,23 +476,23 @@ public class TradeExecutive {
 			return false;
 		}
 		
-		Instance newTrade = new Instance(
-				null, //FIXME
-				null,//FIXME
+		Arbitrage arbitrage = new Arbitrage(
+				this,
+				buyStock, 
+				sellStock,
 				buyPostingPrice,
 				currentStockQuotes.get(hedgeExchange).get().getBid(),// reflexPrice, a.k.a. the hedge price
 				null, //TODO cancelPrice,
 				buyPostingSize
 				);
-		activeTrades.push( newTrade );
+		activeTrades.push( arbitrage );
 		
-		LOGGER.info( String.format("Created new Instance:%s", newTrade));
+		LOGGER.info( String.format("Created new Arbitrage:%s", arbitrage));
 		
 	    // place the order
-		//FIXME
-	    BuyOrder buyOrder = new BuyOrder(null, buyPostingSize, buyPostingPrice); 
+	    BuyOrder buyOrder = new BuyOrder(arbitrage, buyStock, buyPostingSize, buyPostingPrice); 
 	    stockOrdersById.put( buyOrder.getId(), buyOrder);
-	    tradesByStockOrderId.put( buyOrder.getId(), newTrade);
+	    arbitragesByStockOrderId.put( buyOrder.getId(), arbitrage);
 	    orderManagementService.push(buyOrder);
 	    activeBuyOrdersByDttmCreatedDescending.add(buyOrder);
 	    
@@ -497,12 +501,12 @@ public class TradeExecutive {
 	
 	
 	//FIXME
-	private void placeHedgeOrder(Instance trade, int nShares) {
+	private void placeHedgeOrder(Arbitrage trade, int nShares) {
 		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
 		
-		StockOrder hedgeOrder = new SellOrder( hedgeExchange, null, nShares, currentStockQuotes.get(hedgeExchange).get().getBid() );
+		SellOrder hedgeOrder = new SellOrder(trade, hedgeExchange, sellStock, nShares, currentStockQuotes.get(hedgeExchange).get().getBid() );
 		stockOrdersById.put( hedgeOrder.getId(), hedgeOrder);
-		tradesByStockOrderId.put(hedgeOrder.getId(), trade);
+		arbitragesByStockOrderId.put(hedgeOrder.getId(), trade);
 		orderManagementService.push(hedgeOrder);
 	}
 	
@@ -612,8 +616,6 @@ public class TradeExecutive {
 											  .subtract( projectedHedgeCosts.multiply(usdCadFxBid) )
 											  .setScale(2,  RoundingMode.DOWN); 
 		
-
-		/*
 		CalculationLogRecord record = new CalculationLogRecord();
 		record.setName("CA agressive posting price");
 		record.setVariable("usBestBid", usBestBid);
@@ -623,9 +625,9 @@ public class TradeExecutive {
 		record.setVariable("canadianRSFee", canadianRSFee);
 		record.setVariable("projectedInitiationCosts", projectedInitiationCosts);
 		record.setVariable("projectedHedgeCosts", projectedHedgeCosts);
-		record.setResult(cadPostingPrice);
+		record.setResult(cadAggressivePostingPrice);
 		LOGGER.log(record);
-		*/
+		
 		return cadAggressivePostingPrice;
 	}
 	
@@ -649,7 +651,7 @@ public class TradeExecutive {
 	}
 	
 	
-	public void push(IStockQuote quote) {
+	public void push(StockQuote quote) {
 		Objects.requireNonNull(quote);
 
 		boolean put = false;
@@ -672,7 +674,7 @@ public class TradeExecutive {
 		while(true) {
 			StockQuoteReceived event;
 			try {
-				IStockQuote quote = stockQuotesMessageQueue.take();
+				StockQuote quote = stockQuotesMessageQueue.take();
 				event = new StockQuoteReceived(quote);
 			} catch (InterruptedException e) {
 				Thread.interrupted(); // reset the interrupted flag
@@ -692,7 +694,7 @@ public class TradeExecutive {
 		}
 	}
 		
-	public void push(IForeignExchangeQuote quote) {
+	public void push(ForeignExchangeQuote quote) {
 		boolean put = false;
 		do {
 			try {
@@ -711,7 +713,7 @@ public class TradeExecutive {
 	private void pullForeignExchangeQuotes() {
 		assert Thread.currentThread().equals(this.threadPullForeignExchangeQuotes);
 		while(true) {
-			IForeignExchangeQuote quote = null;
+			ForeignExchangeQuote quote = null;
 			try {
 				 quote = currencyQuotesMessageQueue.take();
 			} catch (InterruptedException e) {
@@ -760,10 +762,7 @@ public class TradeExecutive {
 				put = true;
 			} catch (InterruptedException e) {
 				Thread.interrupted(); // reset the interrupted flag
-			} catch (RuntimeException ex) {
-				// for now, do nothing
-				// TODO log?
-			}
+			} 
 		} while (!put);	
 	}
 	
@@ -777,10 +776,7 @@ public class TradeExecutive {
 				put = true;
 			} catch (InterruptedException e) {
 				Thread.interrupted(); // reset the interrupted flag
-			} catch (RuntimeException ex) {
-				// for now, do nothing
-				// TODO log?
-			}
+			} 
 		} while (!put);	
 	}
 	
@@ -794,10 +790,7 @@ public class TradeExecutive {
 				put = true;
 			} catch (InterruptedException e) {
 				Thread.interrupted(); // reset the interrupted flag
-			} catch (RuntimeException ex) {
-				// for now, do nothing
-				// TODO log?
-			}
+			} 
 		} while (!put);	
 	}
 }

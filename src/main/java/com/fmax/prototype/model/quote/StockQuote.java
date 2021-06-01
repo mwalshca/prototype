@@ -4,21 +4,36 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
+import javax.persistence.Embedded;
+
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fmax.prototype.model.Stock;
 
+@Embeddable
 public class StockQuote implements IStockQuote {
-	Stock               stock;
-	volatile BigDecimal bid;
-	volatile BigDecimal ask;
-	long                askSize;
-	long                bidSize;
+	
+	@Embedded
+	Stock       stock;
+	
+	@Column(name="stk_bid", scale=4, precision=10)
+	BigDecimal  bid;
+	
+	@Column(name="stk_ask", scale=4, precision=10)
+	BigDecimal  ask;
+	
+	@Column(name="stk_ask_size")
+	long        askSize;
+	
+	@Column(name="st_bid_size")
+	long        bidSize;
 	
 	@JsonFormat(pattern="yyyy-MM-dd HH:mm:ss")
+	@Column(name="stk_qt_dttm", columnDefinition="DateTime")
     LocalDateTime dateTime;
    
-	public StockQuote() {
-	}
+	protected StockQuote(){} //for JPA
 	
 	
 	public StockQuote(

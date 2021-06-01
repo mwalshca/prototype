@@ -1,13 +1,20 @@
 package com.fmax.prototype.model;
 
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
+
+@Embeddable
 public class ISIN {
+	@Column(name= "isin")
 	String sISIN;
 	
-	public ISIN(String sISAN) {
-		this.sISIN = sISAN;
+	protected ISIN() {} //for JPA
+	
+	public ISIN(String sISIN) {
+		this.sISIN = sISIN;
 	}
 
-	public String getsISAN() {
+	public String getsISIN() {
 		return sISIN;
 	}
 

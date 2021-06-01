@@ -2,9 +2,23 @@ package com.fmax.prototype.model;
 
 import java.util.Objects;
 
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
+import javax.persistence.Embedded;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+
+@Embeddable
 public class Stock {
+	@Enumerated(EnumType.STRING)
+	@Column(name="exchange")
 	private Exchange exchange;
+	
+	
+	@Column(name="symbol", length=12)
 	private	String   symbol;
+	
+	@Embedded
 	private ISIN     isin;
 	
 	public Stock(Exchange exchange, String symbol, ISIN isin) {
@@ -12,7 +26,9 @@ public class Stock {
 		this.symbol = Objects.requireNonNull(symbol);
 		this.isin = Objects.requireNonNull(isin);
 	}
-
+	
+	//for JPA
+	protected Stock() {} 
 	
 	public Exchange getExchange() {
 		return exchange;
@@ -27,28 +43,13 @@ public class Stock {
 	public ISIN getIsin() {
 		return isin;
 	}
-
-
-	public void setExchange(Exchange exchange) {
-		this.exchange = exchange;
-	}
-
-
-	public void setSymbol(String symbol) {
-		this.symbol = symbol;
-	}
-
-
-	public void setIsin(ISIN isin) {
-		this.isin = isin;
-	}
-
+	
 
 	@Override
 	public String toString() {
 		return "Stock [exchange=" + exchange + ", symbol=" + symbol + ", isin=" + isin + "]";
 	}
-
+	
 
 	@Override
 	public int hashCode() {

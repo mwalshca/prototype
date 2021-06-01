@@ -4,15 +4,14 @@ import java.math.BigDecimal;
 
 import org.springframework.stereotype.Component;
 
-import com.fmax.prototype.model.Exchange;
-import com.fmax.prototype.model.ISIN;
+import com.fmax.prototype.model.Stock;
 
 @Component
 public class TradeExecutiveConfiguration {
-	Exchange   buyStockExchange;
-	Exchange   sellStockExchange;
+	Stock   buyStock;
+	Stock   sellStock;
 	
-	ISIN       isin;
+	
 	int 	   defaultBidSize                 = 100;
 	int 	   defaultAskSize                 = 100;
 	BigDecimal netProfitPerShareCDN ;
@@ -23,22 +22,23 @@ public class TradeExecutiveConfiguration {
 	BigDecimal maxiumCdnBidPostingRatio;
 	BigDecimal stopLossAmount;
 	
-	public Exchange getBuyStockExchange() {
-		return buyStockExchange;
-	}
-
-	public void setBuyStockExchange(Exchange buyStockExchange) {
-		this.buyStockExchange = buyStockExchange;
-	}
-
-	public Exchange getSellStockExchange() {
-		return sellStockExchange;
-	}
-
-	public void setSellStockExchange(Exchange sellStockExchange) {
-		this.sellStockExchange = sellStockExchange;
-	}
 	
+	public Stock getBuyStock() {
+		return buyStock;
+	}
+
+	public void setBuyStock(Stock buyStock) {
+		this.buyStock = buyStock;
+	}
+
+	public Stock getSellStock() {
+		return sellStock;
+	}
+
+	public void setSellStock(Stock sellStock) {
+		this.sellStock = sellStock;
+	}
+
 	public int getDefaultBidSize() {
 		return defaultBidSize;
 	}
@@ -111,21 +111,6 @@ public class TradeExecutiveConfiguration {
 		this.stopLossAmount = stopLossAmount;
 	}
 
-	public ISIN getISIN() {
-		return isin;
-	}
+	
 
-	public void setISIN(ISIN isin) {
-		this.isin = isin;
-	}
-
-	@Override
-	public String toString() {
-		return "TradeExecutiveConfiguration [buyStockExchange=" + buyStockExchange + ", sellStockExchange="
-				+ sellStockExchange + ", isin=" + isin + ", defaultBidSize=" + defaultBidSize + ", defaultAskSize="
-				+ defaultAskSize + ", netProfitPerShareCDN=" + netProfitPerShareCDN + ", cancelLeewayPerShareCDN="
-				+ cancelLeewayPerShareCDN + ", netProfitPerShareUS=" + netProfitPerShareUS + ", cancelLeewayPerShareUS="
-				+ cancelLeewayPerShareUS + ", mininumCdnBidPostingRatio=" + mininumCdnBidPostingRatio
-				+ ", maxiumCdnBidPostingRatio=" + maxiumCdnBidPostingRatio + ", stopLossAmount=" + stopLossAmount + "]";
-	}
 }

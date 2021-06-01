@@ -3,11 +3,20 @@ package com.fmax.prototype.model;
 import java.util.Currency;
 import java.util.Objects;
 
+import javax.persistence.Convert;
+import javax.persistence.Embeddable;
+
+import com.fmax.prototype.persistence.CurrencyConverter;
+
+@Embeddable
 public class ForeignExchangePair {
 	public static final Currency CURRENCY_CAD = Currency.getInstance("CAD");
 	public static final Currency CURRENCY_US = Currency.getInstance("USD");
 	
+	@Convert(converter=CurrencyConverter.class)
 	Currency baseCurrency;  // currency being bought
+	
+	@Convert(converter=CurrencyConverter.class)
 	Currency quoteCurrency; // currency used to buy the base currency
 	
 	public ForeignExchangePair(Currency baseCurrency, Currency quoteCurrency) {
@@ -15,7 +24,10 @@ public class ForeignExchangePair {
 		this.quoteCurrency = Objects.requireNonNull(quoteCurrency);
 	}
 	
-
+	
+	protected ForeignExchangePair() {} // for JPA
+	
+	
 	public Currency getBaseCurrency() {
 		return baseCurrency;
 	}

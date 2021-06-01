@@ -4,42 +4,51 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
 import com.fmax.prototype.model.Exchange;
 import com.fmax.prototype.model.ForeignExchangePair;
-import com.fmax.prototype.model.ISIN;
+import com.fmax.prototype.model.Stock;
 import com.fmax.prototype.model.configuration.TradeExecutiveConfiguration;
 import com.fmax.prototype.model.quote.ForeignExchangeQuote;
-import com.fmax.prototype.services.ordermanagement.OrderManagementService;
 
+
+@Scope("singleton")
 @Service
 public class TradeGovernor {
-	// RY ISN = CA7800871021
-	
 	List<TradeExecutive> tradeExecutives = new ArrayList<>();
 	QuoteService quoteService;
-	
+
 	public TradeGovernor(
 			QuoteService quoteService,
 			TradeCalculationService tradeCalculationService,
 			OrderManagementService orderManagementService,
             ExchangeMetadataService exchangeMetadataService,
-            SecuritiesMasterService securityMasterService) {
+            SecuritiesMasterService securityMasterService,
+            CriticalEventService criticalEventService) {
 		this.quoteService = quoteService;
 		
 		// setup the FX stream
 		ForeignExchangePair fxPair = new ForeignExchangePair( ForeignExchangePair.CURRENCY_US, ForeignExchangePair.CURRENCY_CAD);
 		quoteService.startStream(fxPair, this::accept);
 		
+		
+		// hardcoded - get the stocks
+		Stock buyStock = securityMasterService.getStock(Exchange.TSE, "RY");
+		Stock sellStock = securityMasterService.getStock(Exchange.NYSE, "RY");
+		
+		
 		// set up the TradeExecutive
 		TradeExecutive tx = new TradeExecutive(
 				this,
-				init(),
+				init(buyStock, sellStock),
 				tradeCalculationService,
 				orderManagementService,
 				exchangeMetadataService,
-				securityMasterService
+				securityMasterService,
+				quoteService,
+				criticalEventService
 				);
 		
 		tradeExecutives.add(tx);
@@ -52,12 +61,11 @@ public class TradeGovernor {
 	}
 	
 	
-	private TradeExecutiveConfiguration init() {
+	private TradeExecutiveConfiguration init(Stock buyStock, Stock sellStock) {
 		TradeExecutiveConfiguration parameters = new TradeExecutiveConfiguration();
-
-		parameters.setISIN(new ISIN("CA7800871021"));
-		parameters.setBuyStockExchange(Exchange.TSE);
-		parameters.setSellStockExchange(Exchange.NYSE);
+		
+		parameters.setBuyStock(buyStock);
+		parameters.setSellStock(sellStock);
 
 		parameters.setCancelLeewayPerShareCDN(new BigDecimal("0.0090"));
 		parameters.setNetProfitPerShareCDN(new BigDecimal("0.0098"));

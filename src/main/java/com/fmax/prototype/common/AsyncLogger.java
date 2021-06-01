@@ -6,8 +6,12 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
+import com.fmax.prototype.events.Event;
+
 public class AsyncLogger {
 	private LinkedBlockingQueue<LogRecord> records = new LinkedBlockingQueue<>();
+	private LinkedBlockingQueue<Event> events = new LinkedBlockingQueue<>();
+	
 	private Logger logger;
 	private Thread logLoopThread = new Thread( this::logLoop );
 	
@@ -28,8 +32,11 @@ public class AsyncLogger {
 		records.add(logRecord);
 	}
 	
+	public void log(Event event) {
+		events.add(event);
+	}
 	
-	public void logLoop() {
+	protected void logLoop() {
 		while(true) {
 			try {
 				LogRecord record = records.take();

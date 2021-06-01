@@ -5,13 +5,14 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,8 @@ import com.fmax.prototype.model.quote.ForeignExchangeQuote;
 import com.fmax.prototype.model.quote.ForeignExchangeQuoteSink;
 import com.fmax.prototype.model.quote.StockQuote;
 import com.fmax.prototype.model.quote.StockQuoteSink;
+import com.fmax.prototype.model.trade.BuyOrder;
+import com.fmax.prototype.model.trade.SellOrder;
 import com.ib.client.Bar;
 import com.ib.client.CommissionReport;
 import com.ib.client.Contract;
@@ -50,6 +53,7 @@ import com.ib.client.TickAttrib;
 import com.ib.client.TickAttribBidAsk;
 import com.ib.client.TickAttribLast;
 import com.ib.client.Types.SecType;
+import com.ib.client.Types.TimeInForce;
 
 @Scope("singleton")
 @Service
@@ -64,12 +68,14 @@ public class InteractiveBrokerService  implements EWrapper {
     private EClientSocket client;
     private EReader reader = null;
     
-    private int nextValidID = -1;
+    private AtomicInteger nextValidID = new AtomicInteger(0);
     private int requestId = 1942;
     
-    private Map<Integer, ContractDetailsScratchPad> contractDetailsInProgress = new HashMap<>();
-    private Map<Integer, TickByTickHandler<Stock, StockQuoteSink>> stockTickByTickHandlersByRequestID = new HashMap<>();
-    private Map<Integer, TickByTickHandler<ForeignExchangePair, ForeignExchangeQuoteSink>> fxTickByTickHandlersByRequestID = new HashMap<>();
+    private Map<Integer, ContractDetailsScratchPad> contractDetailsInProgress = new ConcurrentHashMap<>();
+    private Map<Integer, TickByTickHandler<Stock, StockQuoteSink>> stockTickByTickHandlersByRequestID = new ConcurrentHashMap<>();
+    private Map<Integer, TickByTickHandler<ForeignExchangePair, ForeignExchangeQuoteSink>> fxTickByTickHandlersByRequestID = new ConcurrentHashMap<>();
+    private Map<Integer, BuyOrder> buyOrdersByID = new ConcurrentHashMap<>();
+    private Map<Integer, SellOrder> sellOrdersByID = new ConcurrentHashMap<>();
     
     public InteractiveBrokerService() {
     	 client = new EClientSocket(this, readerSignal);
@@ -83,7 +89,7 @@ public class InteractiveBrokerService  implements EWrapper {
 		client.startAPI();
 		
 		reader = new EReader(client, readerSignal); 
-		readerThread = new Thread( this::readerLoop, "IB-read-loop");
+		readerThread = new Thread( this::readerLoop, "IBS-read-loop");
 		readerThread.start();
 		reader.start();
 	}
@@ -115,7 +121,6 @@ public class InteractiveBrokerService  implements EWrapper {
 	
 	@Override
 	public void error(int id, int errorCode, String errorMessage) {
-		if(-1 != id)
 			System.out.println("Error:" + errorMessage);
 	}
 
@@ -284,17 +289,98 @@ public class InteractiveBrokerService  implements EWrapper {
     }
     	
     
+    // placeOrder( int id, Contract contract, Order order) 
+    public void  placeOrder(BuyOrder order) {
+    	Order ibOrder = new Order();
+    	
+    	ibOrder.action("BUY");
+    	ibOrder.orderType("LMT"); // limit order
+    	ibOrder.tif(TimeInForce.DAY); // day order
+    	ibOrder.totalQuantity( order.getQuantityOrdered() );
+        ibOrder.lmtPrice( order.getPostingPrice().doubleValue() );
+    	
+        Contract contract = contract( order.getStock() );
+		int id = nextValidID.addAndGet(1);
+        
+        buyOrdersByID.put(id, order);
+        client.placeOrder(id, contract, ibOrder); 	
+    }
     
+    
+    public void placeOrder(SellOrder order) {
+    	Order ibOrder = new Order();
+    	
+    	ibOrder.action("SELL");
+    	ibOrder.orderType("LMT"); // limit order
+    	ibOrder.tif(TimeInForce.DAY); // day order
+    	ibOrder.totalQuantity( order.getQuantityOrdered() );
+        ibOrder.lmtPrice( order.getPostingPrice().doubleValue() );	
+        
+        Contract contract = contract( order.getStock() );
+        int id = nextValidID.addAndGet(1);
+        
+        sellOrdersByID.put(id, order);
+        client.placeOrder(id, contract, ibOrder);
+    }
+    
+    
+    @Override
+   	public void openOrder( int orderId, Contract contract, Order order, OrderState orderState) {
+   		
+   	}
+    
+    
+    @Override
+	public void openOrderEnd() {	
+	}
+
+    
+    @Override
+	public void orderStatus( 
+			int orderId, 
+			String status, 
+			double filled, 
+			double remaining,
+            double avgFillPrice, 
+            int permId, 
+            int parentId, 
+            double lastFillPrice,
+            int clientId, 
+            String whyHeld, 
+            double mktCapPrice) {
+		
+	}
+    
+    
+	@Override
+	public void orderBound(long arg0, int arg1, int arg2) {
+	}
+
+	
+    private Contract contract(Stock stock) {
+    	Contract contract = new Contract();
+      	
+    	contract.secType( SecType.STK );		
+  		contract.exchange( stock.getExchange().toString());
+  		contract.symbol( stock.getSymbol() );
+  		contract.currency( stock.getExchange().currency());	
+  		
+  		return contract;
+    }
+   
+     
 	@Override
 	public void tickPrice(int tickerId, int field, double price, TickAttrib attrib) {
 		System.out.println( String.format("tickPrice(), tickerID:%d, field: %d price:%f \n\n", tickerId, field, price) );
 		System.out.flush();
 	}
 	
+	
 	@Override
 	public void tickSize( int tickerId, int field, int size) {
 		System.out.println( String.format("tickSize(), tickerId:%d, field:%d size:%d", tickerId, field, size) );
 	}
+	
 	
 	@Override
 	public void tickString(int tickerId, int tickType, String value) {
@@ -438,43 +524,13 @@ public class InteractiveBrokerService  implements EWrapper {
 	public void newsProviders(NewsProvider[] arg0) {
 	}
 
+	 
 	@Override
-	public void nextValidId(int arg0) {
-		System.out.println("nextValidId()"+ arg0);
-		nextValidID = arg0;
-	}
-
-	@Override
-	public void openOrder( int orderId, Contract contract, Order order, OrderState orderState) {
-		
-	}
-
-	@Override
-	public void openOrderEnd() {	
-		// TODO Auto-generated method stub
-	}
-
-	@Override
-	public void orderBound(long arg0, int arg1, int arg2) {
-	}
-
-	@Override
-	public void orderStatus( 
-			int orderId, 
-			String status, 
-			double filled, 
-			double remaining,
-            double avgFillPrice, 
-            int permId, 
-            int parentId, 
-            double lastFillPrice,
-            int clientId, 
-            String whyHeld, 
-            double mktCapPrice) {
-		
+	public void nextValidId(int nextValidID) {
+		this.nextValidID.accumulateAndGet( nextValidID, 
+				                           (current, proposed)->  current > proposed ? current : proposed);
 	}
 	
-
 	public void execDetails( int reqId, Contract contract, Execution execution) {	
 	}
 

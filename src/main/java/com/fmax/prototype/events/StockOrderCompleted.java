@@ -1,18 +1,19 @@
 package com.fmax.prototype.events;
 
-public class StockOrderCompleted extends Event {
+import javax.persistence.DiscriminatorValue;
+import javax.persistence.Entity;
 
+@Entity
+@DiscriminatorValue("STOCK_ORDER_COMPLETED")
+public class StockOrderCompleted extends StockOrderEvent {
+	
 	public StockOrderCompleted(long orderId) {
-		super(EventType.STOCK_ORDER_COMPLETED);
-		this.orderId = orderId;
+		super(EventType.STOCK_ORDER_COMPLETED, orderId);
 	}
 	
-	private final long orderId;
-
-	public long getOrderId() {
-		return orderId;
-	}
-
+	protected StockOrderCompleted() {} //for JPA
+	
+	
 	@Override
 	public String toString() {
 		return "StockOrderCompleted [orderId=" + orderId + ", eventType=" + eventType + "]";

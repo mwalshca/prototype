@@ -13,7 +13,7 @@ public class BusinessLogRecordFormattter extends Formatter {
 	}
 	
 	protected String format(CalculationLogRecord record) {
-		StringBuilder sb = new StringBuilder("\nCalculation: ");
+		StringBuilder sb = new StringBuilder("Calculation: ");
 		sb.append( record.getName() );
 		sb.append('\n');
 		sb.append("Variables:\n");

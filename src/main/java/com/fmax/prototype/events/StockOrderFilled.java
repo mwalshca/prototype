@@ -1,21 +1,23 @@
 package com.fmax.prototype.events;
 
-public class StockOrderFilled extends Event {
+import javax.persistence.Column;
+import javax.persistence.DiscriminatorValue;
+import javax.persistence.Entity;
 
+@Entity
+@DiscriminatorValue("STOCK_ORDER_FILLED")
+public class StockOrderFilled extends StockOrderEvent {
+	@Column(name="filled")
+	private int nFilled;
+	
 	public StockOrderFilled(long orderId, int nFilled) {
-		super(EventType.STOCK_ORDER_FILLED);
-		this.orderId = orderId;
+		super(EventType.STOCK_ORDER_FILLED, orderId);
 		this.nFilled = nFilled;
 	}
 	
-	private final long orderId;
-	private final int nFilled;
+	protected StockOrderFilled() {} // for JPA
 	
-	public long getOrderId() {
-		return orderId;
-	}
 
-	
 	public int getnFilled() {
 		return nFilled;
 	}

@@ -1,17 +1,17 @@
 package com.fmax.prototype.events;
 
-public class StockOrderPlaced extends Event {
+import javax.persistence.DiscriminatorValue;
+import javax.persistence.Entity;
 
+@Entity
+@DiscriminatorValue("STOCK_ORDER_PLACED")
+public class StockOrderPlaced extends StockOrderEvent {
+	
 	public StockOrderPlaced(long orderId) {
-		super(EventType.STOCK_ORDER_PLACED);
-		this.orderId = orderId;
+		super(EventType.STOCK_ORDER_PLACED, orderId);
 	}
 	
-	private final long orderId;
-
-	public long getOrderId() {
-		return orderId;
-	}
+	protected StockOrderPlaced() {} //for JPA
 
 	@Override
 	public String toString() {

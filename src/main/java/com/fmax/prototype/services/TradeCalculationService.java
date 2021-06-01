@@ -3,19 +3,40 @@ package com.fmax.prototype.services;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Collection;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.springframework.stereotype.Service;
 
+import com.fmax.prototype.common.AsyncLogger;
+import com.fmax.prototype.common.BusinessLogRecordFormattter;
+import com.fmax.prototype.common.CalculationLogRecord;
 import com.fmax.prototype.common.RPMMath;
-import com.fmax.prototype.model.Instance;
+import com.fmax.prototype.model.Arbitrage;
 import com.fmax.prototype.model.trade.StockOrder;
 
 @Service
 public class TradeCalculationService {
-
-    public int getBuySharesOutstanding(Collection<Instance> activeTrades) {    	
+	private static final AsyncLogger            LOGGER;
+	
+	static {
+		Logger logger = Logger.getLogger("bd." + TradeCalculationService.class.getName());
+		logger.setUseParentHandlers(false);
+		logger.setLevel(Level.ALL);
+		
+		Handler handler = new  ConsoleHandler();
+		handler.setFormatter(new BusinessLogRecordFormattter());
+		 
+		logger.addHandler(handler);
+				
+		LOGGER = new AsyncLogger(logger);
+	}
+	
+    public int getBuySharesOutstanding(Collection<Arbitrage> activeTrades) {    	
     	int buySharesOutstanding = 0;
-		for(Instance activeTrade: activeTrades) {
+		for(Arbitrage activeTrade: activeTrades) {
 			buySharesOutstanding += activeTrade.getBuyPostingSize() - activeTrade.getSharesBought();
 		}
 		return buySharesOutstanding;
@@ -84,7 +105,7 @@ public class TradeCalculationService {
 				                               .subtract( projectedHedgeCosts.multiply(usdCadFxBid) )                                                            
 		 									   .setScale(2,  RoundingMode.DOWN);
 		
-		/*
+		
 		CalculationLogRecord record = new CalculationLogRecord();
 		record.setName("CA passive posting price");
 		record.setVariable("usBestBid", usBestBid);
@@ -95,7 +116,8 @@ public class TradeCalculationService {
 		record.setVariable("projectedInitiationCosts", projectedInitiationCosts);
 		record.setVariable("projectedHedgeCosts", projectedHedgeCosts);
 		record.setResult(cadPostingPrice);
-		*/
+		
+		LOGGER.log(record);
 		
 		return cadPostingPrice;
 	}

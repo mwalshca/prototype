@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.fmax.prototype.model.Exchange;
 import com.fmax.prototype.model.ISIN;
@@ -20,6 +21,7 @@ import com.ib.client.ContractDetails;
 import com.ib.client.Types.SecType;
 
 @Service
+@Transactional
 public class SecuritiesMasterService {
 	InteractiveBrokerService ibs;
 	Map<StockKey, Stock> stocksByStockKey = new HashMap<>();
@@ -46,7 +48,6 @@ public class SecuritiesMasterService {
 
 	
 	public Optional<Stock> getStockFromProvider(Exchange exchange, String symbol) {
-		
 		Contract contract = new Contract();
 		
 		contract.secType(SecType.STK);		
@@ -78,7 +79,7 @@ public class SecuritiesMasterService {
 					.map( (tagValue)-> tagValue.m_value)
 					.findFirst()
 					.map( (sIsin) -> new Stock(exchange, symbol, new ISIN(sIsin)) );
-					return stock;
+				return stock;
 			}
 		} 
 		return Optional.empty();

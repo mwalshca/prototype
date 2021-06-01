@@ -2,3 +2,13 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+  jpa:
+    database: SQL_SERVER
+    show-sql: true
+    hibernate:
+      ddl-auto: create
+  datasource:
+   url: jdbc:sqlserver://localhost;databaseName=Arbitrage;integratedSecurity=false;user=sa;password=Midway64
+   driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+   
+ 

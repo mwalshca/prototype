@@ -5,21 +5,24 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.fmax.prototype.model.Arbitrage;
 import com.fmax.prototype.model.Stock;
 
 public abstract class StockOrder {
 	final long id = ThreadLocalRandom.current().nextLong();
 	
+	Arbitrage parent;
 	int quantityOrdered;
-	final BigDecimal postingPrice;
-	final StockOrderType type;
-	final Stock stock;
-	final LocalDateTime dttmCreated;
+	BigDecimal postingPrice;
+	StockOrderType type;
+	Stock stock;
+	LocalDateTime dttmCreated;
 	LocalDateTime dttmAccepted;
 	
 	OrderStatus status = OrderStatus.TO_BE_PLACED;
 	
-	protected StockOrder(StockOrderType type,Stock security, int quantityOrdered, BigDecimal postingPrice) {
+	protected StockOrder(Arbitrage parent,StockOrderType type,Stock security, int quantityOrdered, BigDecimal postingPrice) {
+		this.parent = parent;
 		this.type = type;
 		this.stock = security;
 		this.dttmCreated = LocalDateTime.now();
@@ -28,7 +31,8 @@ public abstract class StockOrder {
 	}
 	
 	/** mostly for unit tests */
-	protected StockOrder(StockOrderType type, Stock security, int quantityOrdered, BigDecimal postingPrice, LocalDateTime dttmCreated) {
+	protected StockOrder(Arbitrage parent,StockOrderType type, Stock security, int quantityOrdered, BigDecimal postingPrice, LocalDateTime dttmCreated) {
+		this.parent = parent;
 		this.type = type;
 		this.stock = security;
 		this.dttmCreated = LocalDateTime.now();

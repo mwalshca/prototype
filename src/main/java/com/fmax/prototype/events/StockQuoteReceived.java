@@ -1,17 +1,26 @@
 package com.fmax.prototype.events;
 
-import com.fmax.prototype.model.quote.IStockQuote;
+import javax.persistence.DiscriminatorValue;
+import javax.persistence.Embedded;
+import javax.persistence.Entity;
 
+import com.fmax.prototype.model.quote.StockQuote;
+
+@Entity
+@DiscriminatorValue("STOCK_QUOTE_RECEIVED")
 public class StockQuoteReceived extends Event {
 
-	final IStockQuote stockQuote;
+	@Embedded
+	StockQuote stockQuote;
 	
-	public StockQuoteReceived(IStockQuote stockQuote) {
+	protected StockQuoteReceived() {} //for JPA
+	
+	public StockQuoteReceived(StockQuote stockQuote) {
 		super(EventType.STOCK_QUOTE_RECEIVED);
 		this.stockQuote = stockQuote;
 	}
 
-	public IStockQuote getStockQuote() {
+	public StockQuote getStockQuote() {
 		return stockQuote;
 	}
 
