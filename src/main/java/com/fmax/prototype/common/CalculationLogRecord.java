@@ -1,12 +1,14 @@
 package com.fmax.prototype.common;
 
 import java.util.HashMap;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
 public class CalculationLogRecord extends LogRecord {
 	private static final long serialVersionUID = 1L;
 	
+	UUID eventID; //optional
 	String name;
 	Object result;
 	
@@ -44,5 +46,12 @@ public class CalculationLogRecord extends LogRecord {
 	public void setVariables(HashMap<String, Object> variables) {
 		this.variables = variables;
 	}
-	
+
+	public UUID getEventID() {
+		return eventID;
+	}
+
+	public void setEventID(UUID eventID) {
+		this.eventID = eventID;
+	}
 }

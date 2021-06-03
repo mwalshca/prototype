@@ -22,7 +22,7 @@ public class TradeGovernor {
 
 	public TradeGovernor(
 			QuoteService quoteService,
-			TradeCalculationService tradeCalculationService,
+			CalculationService tradeCalculationService,
 			OrderManagementService orderManagementService,
             ExchangeMetadataService exchangeMetadataService,
             SecuritiesMasterService securityMasterService,

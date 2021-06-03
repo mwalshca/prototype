@@ -8,7 +8,7 @@ class TradeCalculationServiceCompareBuyOrderByDttmCreated {
 		StockOrder lhs = null;
 		StockOrder rhs = null;
 		
-		int results = TradeCalculationService.compateBuyOrderByDttmCreatedDescending(lhs, rhs);
+		int results = CalculationService.compateBuyOrderByDttmCreatedDescending(lhs, rhs);
 		org.junit.jupiter.api.Assertions.assertEquals(0, results);
 	}
 
@@ -21,7 +21,7 @@ class TradeCalculationServiceCompareBuyOrderByDttmCreated {
 				                   );
 		StockOrder rhs = null;
 		
-		int results = TradeCalculationService.compateBuyOrderByDttmCreatedDescending(lhs, rhs);
+		int results = CalculationService.compateBuyOrderByDttmCreatedDescending(lhs, rhs);
 		org.junit.jupiter.api.Assertions.assertEquals(-1, results); 
 	}
 	
@@ -37,7 +37,7 @@ class TradeCalculationServiceCompareBuyOrderByDttmCreated {
 				                   );
 		
 		
-		int results = TradeCalculationService.compateBuyOrderByDttmCreatedDescending(lhs, rhs);
+		int results = CalculationService.compateBuyOrderByDttmCreatedDescending(lhs, rhs);
 		org.junit.jupiter.api.Assertions.assertEquals(1, results); 
 	}
 	
@@ -58,7 +58,7 @@ class TradeCalculationServiceCompareBuyOrderByDttmCreated {
 		
 		assert lhs.getDttmCreated().compareTo(rhs.getDttmCreated()) == -1;
 		
-		int results = TradeCalculationService.compateBuyOrderByDttmCreatedDescending(lhs, rhs);
+		int results = CalculationService.compateBuyOrderByDttmCreatedDescending(lhs, rhs);
 		org.junit.jupiter.api.Assertions.assertEquals(1, results); 
 	}
 	
@@ -80,7 +80,7 @@ class TradeCalculationServiceCompareBuyOrderByDttmCreated {
 		
 		assert lhs.getDttmCreated().compareTo(rhs.getDttmCreated()) == -1;
 		
-		int results = TradeCalculationService.compateBuyOrderByDttmCreatedDescending(lhs, rhs);
+		int results = CalculationService.compateBuyOrderByDttmCreatedDescending(lhs, rhs);
 		org.junit.jupiter.api.Assertions.assertEquals(1, results); 
 	}*/
 }

@@ -73,7 +73,7 @@ public class TradeExecutive {
 	//services
 	private final TradeGovernor 		     tradeGovernor;
 	private final OrderManagementService     orderManagementService;
-	private final TradeCalculationService    tradeCalculationService;
+	private final CalculationService    tradeCalculationService;
 	private final CriticalEventService       eventService;
 	 
 	//Queue and thread to receive stock quotes
@@ -105,8 +105,8 @@ public class TradeExecutive {
     private final ConcurrentHashMap<Long,StockOrder>   stockOrdersById = new ConcurrentHashMap<>();
 	
     private final ConcurrentHashMap<Long,Arbitrage>	 arbitragesByStockOrderId = new ConcurrentHashMap<>();
-    private final LinkedList<Arbitrage>              activeTrades = new LinkedList<>();
-	private final HashSet<Arbitrage>                 completedTrades = new HashSet<>();
+    private final LinkedList<Arbitrage>              activeArbitrages = new LinkedList<>();
+	
 	
 	// A priority queue contain all active BuyOrders, ordered by DttmCreated, descending i.e. newest orders are first
 	private final PriorityQueue<BuyOrder>              activeBuyOrdersByDttmCreatedDescending =  new PriorityQueue<>();;
@@ -114,7 +114,7 @@ public class TradeExecutive {
 	
 	public TradeExecutive(TradeGovernor tradeGovernor, 
 			              TradeExecutiveConfiguration tradeExecutiveConfiguration,
-			              TradeCalculationService tradeCalculationService,
+			              CalculationService tradeCalculationService,
 			              OrderManagementService orderManagementService,
 			              ExchangeMetadataService exchangeMetadataService,
 			              SecuritiesMasterService securityMasterService,
@@ -154,7 +154,7 @@ public class TradeExecutive {
 		record.setVariable("tradeExecutiveConfiguration.getMaxiumCdnBidPostingRatio",  tradeExecutiveConfiguration.getMaxiumCdnBidPostingRatio());
 		record.setResult( cdnAveragePostingRatio);
 		LOGGER.log(record);
-					
+		ces.push(record);			
 		
 		
 		// initialize threads
@@ -286,24 +286,23 @@ public class TradeExecutive {
 		}
 		assert order != null;
 		
-		final Arbitrage trade = arbitragesByStockOrderId.get(order.getId());
-		assert trade != null;
-		assert activeTrades.contains(trade);
+		final Arbitrage arbitage = arbitragesByStockOrderId.get(order.getId());
+		assert arbitage != null;
+		assert activeArbitrages.contains(arbitage);
 		
 		if(order.getStock().getExchange().equals(postExchange)) {	
-			trade.buyFilled( event.getnFilled() );
-			placeHedgeOrder( trade, event.getnFilled());
+			arbitage.buyFilled( event.getnFilled() );
+			placeHedgeOrder( arbitage, event.getnFilled());
 		} 
 		else if(order.getStock().getExchange().equals(hedgeExchange)) {
-			trade.hedgeFilled( event.getnFilled( ));
+			arbitage.hedgeFilled( event.getnFilled( ));
 		}
 		else
 			assert false;
 	
-		if( trade.isComplete() ) {
-			LOGGER.info( String.format("Trade completed:%s", trade) );
-			completedTrades.add( trade );
-			boolean removed = activeTrades.remove( trade );
+		if( arbitage.isComplete() ) {
+			LOGGER.info( String.format("Arbitrage completed:%s", arbitage) );
+			boolean removed = activeArbitrages.remove( arbitage );
 			assert removed;
 		}
 	}
@@ -362,7 +361,7 @@ public class TradeExecutive {
 	private void checkAndAdjustParticipation() {
 		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
 		
-		int buySharesOutstanding = tradeCalculationService.getBuySharesOutstanding( activeTrades );
+		int buySharesOutstanding = tradeCalculationService.getBuySharesOutstanding( activeArbitrages );
 		BigDecimal currentMarketParticipationRatio = tradeCalculationService.getMarketParticipationRatio(buySharesOutstanding, currentStockQuotes.get(hedgeExchange).get().getBidSize() );
 		
 		if( shouldReduceParticipation( currentMarketParticipationRatio ) ) {
@@ -399,6 +398,7 @@ public class TradeExecutive {
 		
 		blr.setResult(shouldReduceParticipation);
 		LOGGER.log(blr);
+		eventService.push(blr);
 		
 		return shouldReduceParticipation;
 	}
@@ -459,6 +459,7 @@ public class TradeExecutive {
 		
 		blr.setResult(shouldIncreaseParticpation);
 		LOGGER.log(blr);
+		eventService.push(blr);
 		
 		return shouldIncreaseParticpation;
 	}
@@ -485,7 +486,7 @@ public class TradeExecutive {
 				null, //TODO cancelPrice,
 				buyPostingSize
 				);
-		activeTrades.push( arbitrage );
+		activeArbitrages.push( arbitrage );
 		
 		LOGGER.info( String.format("Created new Arbitrage:%s", arbitrage));
 		
@@ -526,7 +527,7 @@ public class TradeExecutive {
 		assert hedgeExchangeQuote != null;
 		
 		BigDecimal bdNyseBestBidSize = new BigDecimal( hedgeExchangeQuote.getBidSize(), MATH_CONTEXT_WHOLE_NUMBER_ROUND_DOWN);
-		int buySharesOutstanding = tradeCalculationService.getBuySharesOutstanding( activeTrades );
+		int buySharesOutstanding = tradeCalculationService.getBuySharesOutstanding( activeArbitrages );
 		int cadPostingSize = cdnAveragePostingRatio.multiply(bdNyseBestBidSize, MATH_CONTEXT_WHOLE_NUMBER_ROUND_DOWN).intValue() - buySharesOutstanding;
 		if( cadPostingSize <0) {
 			cadPostingSize = 0;
@@ -538,6 +539,7 @@ public class TradeExecutive {
 		record.setVariable( "buySharesOutstanding", buySharesOutstanding);
 		record.setResult( cadPostingSize );
 		LOGGER.log(record);
+		eventService.push(record);
 		
 		return cadPostingSize;
 	}
@@ -582,7 +584,7 @@ public class TradeExecutive {
 				                               .subtract( projectedInitiationCosts )
 				                               .subtract( projectedHedgeCosts.multiply(usdCadFxBid) )                                                            
 		 									   .setScale(2,  RoundingMode.DOWN);
-		/*
+		
 		CalculationLogRecord record = new CalculationLogRecord();
 		record.setName("CA passive posting price");
 		record.setVariable("usBestBid", usBestBid);
@@ -594,7 +596,7 @@ public class TradeExecutive {
 		record.setVariable("projectedHedgeCosts", projectedHedgeCosts);
 		record.setResult(cadPostingPrice);
 		LOGGER.log(record);
-		*/
+		//eventService.push(record);	
 		return cadPostingPrice;
 	}
 
@@ -627,25 +629,27 @@ public class TradeExecutive {
 		record.setVariable("projectedHedgeCosts", projectedHedgeCosts);
 		record.setResult(cadAggressivePostingPrice);
 		LOGGER.log(record);
+		eventService.push(record);
 		
 		return cadAggressivePostingPrice;
 	}
 	
 	
 	private boolean isEnoughDataToTrade() {
-		/* CalculationLogRecord blr = new CalculationLogRecord();	
+		CalculationLogRecord blr = new CalculationLogRecord();	
 		blr.setName("isEnoughDataToTrade");
-		blr.setVariable("tseStockQuote", tseStockQuote.get() );
-		blr.setVariable("nyseStockQuote", nyseStockQuote.get() );
+		blr.setVariable("postExchangeStockQuote", currentStockQuotes.get(postExchange).get());
+		blr.setVariable("hedgeExchangeStockQuote", currentStockQuotes.get(hedgeExchange).get() );
 		blr.setVariable("usCadCurrencyQuote", usCadCurrencyQuote.get() );
-		*/
+		
 		boolean isEnough = 
 				    currentStockQuotes.get(postExchange).get() != null
 				&&  currentStockQuotes.get(hedgeExchange).get() != null
 				&&  usCadCurrencyQuote.get() != null;
 		
-	//	blr.setResult( isEnough );
-	//	LOGGER.log(blr);
+		blr.setResult( isEnough );
+		LOGGER.log(blr);
+		eventService.push(blr);
 		
 		return isEnough;
 	}

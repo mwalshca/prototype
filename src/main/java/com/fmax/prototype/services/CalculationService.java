@@ -18,11 +18,16 @@ import com.fmax.prototype.model.Arbitrage;
 import com.fmax.prototype.model.trade.StockOrder;
 
 @Service
-public class TradeCalculationService {
+public class CalculationService {
 	private static final AsyncLogger            LOGGER;
+	private final CriticalEventService criticalEventService;
+	
+	public CalculationService(CriticalEventService criticalEventService) {
+		this.criticalEventService = criticalEventService;
+	}
 	
 	static {
-		Logger logger = Logger.getLogger("bd." + TradeCalculationService.class.getName());
+		Logger logger = Logger.getLogger("bd." + CalculationService.class.getName());
 		logger.setUseParentHandlers(false);
 		logger.setLevel(Level.ALL);
 		
@@ -118,6 +123,7 @@ public class TradeCalculationService {
 		record.setResult(cadPostingPrice);
 		
 		LOGGER.log(record);
+		criticalEventService.push(record);
 		
 		return cadPostingPrice;
 	}
