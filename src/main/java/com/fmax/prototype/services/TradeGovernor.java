@@ -14,7 +14,7 @@ import com.fmax.prototype.model.configuration.TradeExecutiveConfiguration;
 import com.fmax.prototype.model.quote.ForeignExchangeQuote;
 
 
-@Scope("singleton")
+@Scope("prototype")
 @Service
 public class TradeGovernor {
 	List<TradeExecutive> tradeExecutives = new ArrayList<>();
@@ -35,8 +35,8 @@ public class TradeGovernor {
 		
 		
 		// hardcoded - get the stocks
-		Stock buyStock = securityMasterService.getStock(Exchange.TSE, "RY");
-		Stock sellStock = securityMasterService.getStock(Exchange.NYSE, "RY");
+		Stock buyStock = securityMasterService.getStock(Exchange.NYSE, "RY");
+		Stock sellStock = securityMasterService.getStock(Exchange.TSE, "RY");
 		
 		
 		// set up the TradeExecutive
@@ -64,8 +64,8 @@ public class TradeGovernor {
 	private TradeExecutiveConfiguration init(Stock buyStock, Stock sellStock) {
 		TradeExecutiveConfiguration parameters = new TradeExecutiveConfiguration();
 		
-		parameters.setBuyStock(buyStock);
-		parameters.setSellStock(sellStock);
+		parameters.setPostStock(buyStock);
+		parameters.setHedgeStock(sellStock);
 
 		parameters.setCancelLeewayPerShareCDN(new BigDecimal("0.0090"));
 		parameters.setNetProfitPerShareCDN(new BigDecimal("0.0098"));

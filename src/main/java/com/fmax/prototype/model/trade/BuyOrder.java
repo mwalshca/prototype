@@ -9,12 +9,12 @@ import com.fmax.prototype.model.Stock;
 
 public class BuyOrder  extends StockOrder{
 
-	public BuyOrder(Arbitrage instance, Stock stock, int quantityOrdered, BigDecimal postingPrice) {
+	public BuyOrder(Arbitrage instance, Stock stock, long quantityOrdered, BigDecimal postingPrice) {
 		super(instance, StockOrderType.BUY, stock, quantityOrdered, postingPrice);
 	}
 	
 	
-	public BuyOrder(Arbitrage instance, Exchange exchange, Stock stock, int quantityOrdered, BigDecimal postingPrice, LocalDateTime dttmCreated) {
+	public BuyOrder(Arbitrage instance, Exchange exchange, Stock stock, long quantityOrdered, BigDecimal postingPrice, LocalDateTime dttmCreated) {
 		super(instance, StockOrderType.BUY, stock, quantityOrdered, postingPrice, dttmCreated);
 	}
 }

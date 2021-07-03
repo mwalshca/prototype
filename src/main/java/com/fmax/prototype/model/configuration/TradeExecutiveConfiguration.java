@@ -8,8 +8,8 @@ import com.fmax.prototype.model.Stock;
 
 @Component
 public class TradeExecutiveConfiguration {
-	Stock   buyStock;
-	Stock   sellStock;
+	Stock   postStock;
+	Stock   hedgeStock;
 	
 	
 	int 	   defaultBidSize                 = 100;
@@ -20,23 +20,24 @@ public class TradeExecutiveConfiguration {
 	BigDecimal cancelLeewayPerShareUS;
 	BigDecimal mininumCdnBidPostingRatio;
 	BigDecimal maxiumCdnBidPostingRatio;
+	BigDecimal mininumNyseBidPostingRatio;
+	BigDecimal maximumNysePostingRatio;
 	BigDecimal stopLossAmount;
 	
-	
-	public Stock getBuyStock() {
-		return buyStock;
+	public Stock getPostStock() {
+		return postStock;
 	}
 
-	public void setBuyStock(Stock buyStock) {
-		this.buyStock = buyStock;
+	public void setPostStock(Stock buyStock) {
+		this.postStock = buyStock;
 	}
 
-	public Stock getSellStock() {
-		return sellStock;
+	public Stock getHedgeStock() {
+		return hedgeStock;
 	}
 
-	public void setSellStock(Stock sellStock) {
-		this.sellStock = sellStock;
+	public void setHedgeStock(Stock sellStock) {
+		this.hedgeStock = sellStock;
 	}
 
 	public int getDefaultBidSize() {
@@ -110,7 +111,4 @@ public class TradeExecutiveConfiguration {
 	public void setStopLossAmount(BigDecimal stopLossAmount) {
 		this.stopLossAmount = stopLossAmount;
 	}
-
-	
-
 }

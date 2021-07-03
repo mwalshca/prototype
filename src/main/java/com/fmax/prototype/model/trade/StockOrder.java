@@ -12,7 +12,7 @@ public abstract class StockOrder {
 	final long id = ThreadLocalRandom.current().nextLong();
 	
 	Arbitrage parent;
-	int quantityOrdered;
+	long quantityOrdered;
 	BigDecimal postingPrice;
 	StockOrderType type;
 	Stock stock;
@@ -21,7 +21,7 @@ public abstract class StockOrder {
 	
 	OrderStatus status = OrderStatus.TO_BE_PLACED;
 	
-	protected StockOrder(Arbitrage parent,StockOrderType type,Stock security, int quantityOrdered, BigDecimal postingPrice) {
+	protected StockOrder(Arbitrage parent,StockOrderType type,Stock security, long quantityOrdered, BigDecimal postingPrice) {
 		this.parent = parent;
 		this.type = type;
 		this.stock = security;
@@ -31,7 +31,7 @@ public abstract class StockOrder {
 	}
 	
 	/** mostly for unit tests */
-	protected StockOrder(Arbitrage parent,StockOrderType type, Stock security, int quantityOrdered, BigDecimal postingPrice, LocalDateTime dttmCreated) {
+	protected StockOrder(Arbitrage parent,StockOrderType type, Stock security, long quantityOrdered, BigDecimal postingPrice, LocalDateTime dttmCreated) {
 		this.parent = parent;
 		this.type = type;
 		this.stock = security;
@@ -85,7 +85,7 @@ public abstract class StockOrder {
 		return dttmCreated;
 	}
 
-	public int getQuantityOrdered() {
+	public long getQuantityOrdered() {
 		return quantityOrdered;
 	}
 

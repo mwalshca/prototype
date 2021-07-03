@@ -48,7 +48,7 @@ public class CalculationService {
     }
     
     
-	public BigDecimal getMarketParticipationRatio(int buySharesOutstanding, long hedgeMarketBestBidSize) {	
+	public BigDecimal marketParticipationRatio(int buySharesOutstanding, long hedgeMarketBestBidSize) {	
 		if(0 == buySharesOutstanding) { //optimization - avoid division if numerator is zero
 			BigDecimal result = BigDecimal.ZERO.setScale(2);
 					//record.setResult(result);
@@ -72,8 +72,9 @@ public class CalculationService {
     }
 	
 	
+	
 	//	CA cancel price = round down to nearest tick (US best bid * USD/CAD FX bid - (Cancel leeway in CA + Projected initiation costs + (Projected hedge costs * USD/CAD FX ask)))
-	public BigDecimal getCanadianCancelPrice(
+	public BigDecimal tseCancelPrice(
 			BigDecimal usBestBid,
 			BigDecimal usdCadBid,
 			BigDecimal cdnCancelLeeway,
@@ -92,7 +93,7 @@ public class CalculationService {
 		return canadianCancelPrice; 
 	}
 	
-	protected BigDecimal cadPassivePostingPrice(
+	public BigDecimal tsePassivePostingPrice(
 			BigDecimal usBestBid,
 			BigDecimal usdCadFxBid,
 			BigDecimal netProfitPerShareInCA,
@@ -127,6 +128,185 @@ public class CalculationService {
 		
 		return cadPostingPrice;
 	}
+	
+	
+	//If US posting price < US Best Ask	US posting price =
+	//	round down to nearest tick 
+	//			(CA best bid / USD/CAD FX ask 
+	//	        - (Net profit in US + Projected initiation costs
+	//           + (Projected hedge costs / USD/CAD FX bid)))
+	
+	//If US posting price >= US Best Ask 
+	//US posting price = 
+	// round down to nearest tick (CA best bid / USD/CAD FX ask 
+	// - (Net profit in US + Projected initiation costs + (Projected hedge costs / USD/CAD FX bid)))
+	//
+	// Projected initiation costs = US passive exchange fee per share
+	public BigDecimal nysePostingPrice(
+			long       numberOfUnits,
+			BigDecimal usBestAsk, 
+			BigDecimal cdnBestBid,  
+			BigDecimal usdCadFxAsk, 
+			BigDecimal netProfitInUS,
+			BigDecimal usPassiveExchangeFeePerShare,
+			BigDecimal usAggressiveExchangeFeePerShare,
+			BigDecimal cadAgressiveExchangeFeePerShare,
+			BigDecimal rsFee) {
+		
+		BigDecimal usPassivePostingPrice = nysePassivePostingPrice(
+				numberOfUnits,
+				cdnBestBid,  
+				usdCadFxAsk, 
+				netProfitInUS,
+				usPassiveExchangeFeePerShare,
+				cadAgressiveExchangeFeePerShare,
+				rsFee);
+		
+		if( usPassivePostingPrice.compareTo(usBestAsk) == -1) {
+			CalculationLogRecord record = new CalculationLogRecord();
+			record.setName("usPostingPrice");
+			record.setVariable("usPassivePostingPrice", usPassivePostingPrice);
+			record.setVariable("usBestAsk", usBestAsk);
+			record.setResult( usPassivePostingPrice );
+			LOGGER.log(record);
+			
+			return usPassivePostingPrice;	
+		} 
+		
+		// return the aggressive posting price
+		BigDecimal usAggressivePostingPrice  = nyseAggressivePostingPrice(
+				numberOfUnits,
+				cdnBestBid,  
+				usdCadFxAsk, 
+				netProfitInUS,
+				usAggressiveExchangeFeePerShare,
+			    cadAgressiveExchangeFeePerShare,
+				rsFee); 
+		
+		CalculationLogRecord record = new CalculationLogRecord();
+		record.setName("usPostingPrice");
+		record.setVariable("usPassivePostingPrice", usPassivePostingPrice);
+		record.setVariable("usAggressivePostingPrice", usAggressivePostingPrice);
+		record.setVariable("usBestAsk", usBestAsk);
+		record.setResult( usAggressivePostingPrice );
+		LOGGER.log(record);
+		
+		return usAggressivePostingPrice;
+	}
+	
+	public long nysePostingSize(
+		    long hedgeBestBidSize,
+			long postSharesOutsanding,
+			BigDecimal averagePostingRatio) {
+		
+		CalculationLogRecord record = new CalculationLogRecord();
+		record.setName("nysePostingSize");
+		record.setVariable("hedge exchange StockQuote", hedgeBestBidSize);
+		record.setVariable("postSharesOutstanding", postSharesOutsanding);
+		record.setVariable("averagePostingRatio", averagePostingRatio);
+		
+		
+		BigDecimal postExchangeBestBidSize = new BigDecimal( hedgeBestBidSize, RPMMath.MATH_CONTEXT_WHOLE_NUMBER_ROUND_DOWN);		
+		long postingSize = averagePostingRatio.multiply(postExchangeBestBidSize, RPMMath.MATH_CONTEXT_RATIO).longValue() - postSharesOutsanding;
+		if( postingSize <0) {
+			postingSize = 0;
+		}
+		postingSize = (postingSize / 100) * 100; //round down to nearest board lot size; //TODO remove hard coding
+		record.setVariable("postingSize", postingSize);
+		LOGGER.log(record);
+	//	TODO eventService.push(record);
+		
+		return postingSize;
+	}
+	
+	
+	// US (passive) posting price = round down to nearest tick (CA best bid / USD/CAD FX ask - (Net profit in US + Projected initiation costs + (Projected hedge costs / USD/CAD FX bid)))
+	// Projected initiation costs = US passive exchange fee per share
+    // Projected hedge costs = CA aggressive exchange fee per share + RS fee
+	public BigDecimal nysePassivePostingPrice(
+			long       numberOfUnits,
+			BigDecimal cdnBestBid,  
+			BigDecimal usdCadFxAsk, 
+			BigDecimal netProfitInUS,
+			BigDecimal usPassiveExchangeFeePerShare,
+			BigDecimal cadAgressiveExchangeFeePerShare,
+			BigDecimal rsFee) {
+		BigDecimal bdNumberOfUnits = new BigDecimal( numberOfUnits ) ;
+		
+		BigDecimal projectedInitiationCosts = usPassiveExchangeFeePerShare.multiply(bdNumberOfUnits);
+		
+		BigDecimal projectedHedgeCostsInUSD = cadAgressiveExchangeFeePerShare.multiply( bdNumberOfUnits )
+										      	.add( rsFee )
+										      	.divide( usdCadFxAsk );
+		
+		 BigDecimal price = 
+				 	cdnBestBid.divide( usdCadFxAsk )
+				   		.subtract( netProfitInUS )
+				   		.subtract( projectedInitiationCosts )
+				   		.subtract( projectedHedgeCostsInUSD )
+				   		.setScale(2, RoundingMode.DOWN); 
+		
+
+		 //TODO do this only if logging enabled for calculation
+		CalculationLogRecord record = new CalculationLogRecord();
+		record.setName("usPassivePostingPrice");
+		record.setVariable("numberOfUnits", numberOfUnits);
+		record.setVariable("cdnBestBid", cdnBestBid);
+		record.setVariable("usdCadFxAsk", usdCadFxAsk);
+		record.setVariable("netProfitInUS", netProfitInUS);
+		record.setVariable("usPassiveExchangeFeePerShare", usPassiveExchangeFeePerShare);
+		record.setVariable("cadAgressiveExchangeFeePerShare", cadAgressiveExchangeFeePerShare);
+		record.setVariable("rsFee", rsFee);
+		record.setResult( price );
+		LOGGER.log(record);
+		
+		return price;
+	}
+	
+	//US (aggressive) posting price = round down to nearest tick (CA best bid / USD/CAD FX ask - (Net profit in US + Projected initiation costs + (Projected hedge costs / USD/CAD FX bid)))
+	// Projected initiation costs = US aggressive exchange fee per share
+	// Projected hedge costs = CA aggressive exchange fee per share + RS fee
+	public BigDecimal nyseAggressivePostingPrice(
+			long       numberOfUnits,
+			BigDecimal cdnBestBid,  
+			BigDecimal usdCadFxAsk, 
+			BigDecimal netProfitInUS,
+			BigDecimal usAggressiveExchangeFeePerShare,
+			BigDecimal cadAgressiveExchangeFeePerShare,
+			BigDecimal rsFee) {
+		BigDecimal bdNumberOfUnits = new BigDecimal( numberOfUnits ) ;
+		
+		BigDecimal projectedInitiationCosts = usAggressiveExchangeFeePerShare.multiply(bdNumberOfUnits);
+		
+		BigDecimal projectedHedgeCostsInUSD = cadAgressiveExchangeFeePerShare.multiply( bdNumberOfUnits )
+										      	.add( rsFee )
+										      	.divide( usdCadFxAsk );
+		
+		BigDecimal price = 
+				 	cdnBestBid.divide( usdCadFxAsk )
+				   		.subtract( netProfitInUS )
+				   		.subtract( projectedInitiationCosts )
+				   		.subtract( projectedHedgeCostsInUSD )
+				   		.setScale(2, RoundingMode.DOWN);
+				   		
+		 			
+		
+		 //TODO do this only if logging enabled for calculation
+		CalculationLogRecord record = new CalculationLogRecord();
+		record.setName("usAggressivePostingPrice");
+		record.setVariable("numberOfUnits", numberOfUnits);
+		record.setVariable("cdnBestBid", cdnBestBid);
+		record.setVariable("usdCadFxAsk", usdCadFxAsk);
+		record.setVariable("netProfitInUS", netProfitInUS);
+		record.setVariable("usAggressiveExchangeFeePerShare", usAggressiveExchangeFeePerShare);
+		record.setVariable("cadAgressiveExchangeFeePerShare", cadAgressiveExchangeFeePerShare);
+		record.setVariable("rsFee", rsFee);
+		record.setResult( price );
+		LOGGER.log(record);
+			
+		return price;
+	}
+	
 	
 	public static int compateBuyOrderByDttmCreatedDescending(StockOrder lhs, StockOrder rhs) {
 		if(null==lhs) {

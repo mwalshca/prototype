@@ -27,14 +27,8 @@ public class QuoteService {
 		ibs.reqTickByTickData(stock, quoteSink);
 	}
 	
+	
 	public void startStream(ForeignExchangePair fxPair, ForeignExchangeQuoteSink sink) {
-		Contract contract = new Contract();
-		
-		contract.secType("CASH");
-		contract.exchange("IDEALPRO");
-		contract.symbol(fxPair.getBaseCurrency().toString());
-        contract.currency(fxPair.getQuoteCurrency().toString());
-        
         ibs.reqTickByTickData(fxPair, sink);
 	}
 }

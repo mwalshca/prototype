@@ -10,14 +10,14 @@ public class Arbitrage {
 	final Stock          sellStock;
 	
 	final BigDecimal buyPostingPrice;
-	final int        buyInitialPostingSize;
+	final long       buyInitialPostingSize;
 	
 	final BigDecimal reflexPrice; //a.k.a. the hedge price
 	final BigDecimal cancelPrice;
 	
-	int   sharesBought;
-	int   sharesSold;
-	int   sharesHeld;
+	long  sharesBought;
+	long  sharesSold;
+	long  sharesHeld;
 	
 	public Arbitrage(
 			TradeExecutive tradeExecutive,
@@ -26,7 +26,7 @@ public class Arbitrage {
 			BigDecimal buyPostingPrice,
 			BigDecimal reflexPrice, //a.k.a. the hedge price
 			BigDecimal cancelPrice,
-			int        buyPostingSize) 
+			long       buyPostingSize) 
 	{
 		this.tradeExecutive = tradeExecutive;
 		this.buyStock = buyStock;
@@ -80,17 +80,17 @@ public class Arbitrage {
 	}
 
 	
-	public int getSharesBought() {
+	public long getSharesBought() {
 		return sharesBought;
 	}
 
 	
-	public int getSharesSold() {
+	public long getSharesSold() {
 		return sharesSold;
 	}
 
 	
-	public int getSharesHeld() {
+	public long getSharesHeld() {
 		return sharesHeld;
 	}
 
@@ -109,7 +109,7 @@ public class Arbitrage {
 	}
 
 
-	public int getBuyPostingSize() {
+	public long getBuyPostingSize() {
 		return buyInitialPostingSize;
 	}
 
@@ -124,7 +124,7 @@ public class Arbitrage {
 	}
 
 
-	public int getBuyInitialPostingSize() {
+	public long getBuyInitialPostingSize() {
 		return buyInitialPostingSize;
 	}	
 }
