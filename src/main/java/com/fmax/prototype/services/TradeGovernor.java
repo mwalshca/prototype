@@ -73,6 +73,8 @@ public class TradeGovernor {
 		parameters.setNetProfitPerShareUS(new BigDecimal("0.012"));
 		parameters.setMininumCdnBidPostingRatio(new BigDecimal("0.40"));
 		parameters.setMaxiumCdnBidPostingRatio(new BigDecimal("0.60"));
+		parameters.setMininumNyseBidPostingRatio(new BigDecimal("0.40"));
+		parameters.setMaximumNysePostingRatio( new BigDecimal("0.60") );
 
 		return parameters;
 	}

@@ -11,9 +11,6 @@ public class TradeExecutiveConfiguration {
 	Stock   postStock;
 	Stock   hedgeStock;
 	
-	
-	int 	   defaultBidSize                 = 100;
-	int 	   defaultAskSize                 = 100;
 	BigDecimal netProfitPerShareCDN ;
 	BigDecimal cancelLeewayPerShareCDN;
 	BigDecimal netProfitPerShareUS;
@@ -40,22 +37,6 @@ public class TradeExecutiveConfiguration {
 		this.hedgeStock = sellStock;
 	}
 
-	public int getDefaultBidSize() {
-		return defaultBidSize;
-	}
-	
-	public void setDefaultBidSize(int defaultBidSize) {
-		this.defaultBidSize = defaultBidSize;
-	}
-	
-	public int getDefaultAskSize() {
-		return defaultAskSize;
-	}
-	
-	public void setDefaultAskSize(int defaultAskSize) {
-		this.defaultAskSize = defaultAskSize;
-	}
-	
 	public BigDecimal getNetProfitPerShareCDN() {
 		return netProfitPerShareCDN;
 	}
@@ -110,5 +91,21 @@ public class TradeExecutiveConfiguration {
 
 	public void setStopLossAmount(BigDecimal stopLossAmount) {
 		this.stopLossAmount = stopLossAmount;
+	}
+
+	public BigDecimal getMininumNyseBidPostingRatio() {
+		return mininumNyseBidPostingRatio;
+	}
+
+	public void setMininumNyseBidPostingRatio(BigDecimal mininumNyseBidPostingRatio) {
+		this.mininumNyseBidPostingRatio = mininumNyseBidPostingRatio;
+	}
+
+	public BigDecimal getMaximumNysePostingRatio() {
+		return maximumNysePostingRatio;
+	}
+
+	public void setMaximumNysePostingRatio(BigDecimal maximumNysePostingRatio) {
+		this.maximumNysePostingRatio = maximumNysePostingRatio;
 	}
 }

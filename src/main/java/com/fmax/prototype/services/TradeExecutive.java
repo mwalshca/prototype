@@ -240,13 +240,14 @@ public class TradeExecutive {
 		//TODO BR-0004
 		//TODO BR-0005
 		// Verify correct stock quote
+	
 		StockQuote stockQuote = event.getStockQuote();
+		IStockQuote currentHedgeQuote = currentStockQuotes.get(hedgeExchange).get();
 		currentStockQuotes.get( stockQuote.getStock().getExchange()).set( stockQuote );
 		
 		boolean hedgeBestBidSizeChanged = false;
 		
 		if(stockQuote.getStock().getExchange().equals(hedgeExchange)) {
-			IStockQuote currentHedgeQuote = currentStockQuotes.get(hedgeExchange).get();
 			if(null == currentHedgeQuote)
 				hedgeBestBidSizeChanged = true;
 			else
@@ -257,6 +258,7 @@ public class TradeExecutive {
 		if(hedgeBestBidSizeChanged) {
 			checkAndAdjustParticipation();
 		} 
+		assert stockQuote.equals(currentStockQuotes.get(stockQuote.getStock().getExchange()).get());
 	}
 
 	
@@ -275,10 +277,12 @@ public class TradeExecutive {
 	
 	private void handle( StockOrderFilled event ) {
 		assert Thread.currentThread().equals(this.threadHandleEvents); // this method should ONLY be called by the event-handling thread
+		postSharesOutstanding -= event.getnFilled();
 		
 		long id = event.getOrderId();
 		StockOrder order = stockOrdersById.get(id);
 		if(null==order) {
+			return;
 			//FIXME alarm
 		}
 		assert order != null;
@@ -287,6 +291,7 @@ public class TradeExecutive {
 		assert arbitage != null;
 		assert activeArbitrages.contains(arbitage);
 		
+		postSharesOutstanding -= event.getnFilled();
 		if(order.getStock().getExchange().equals(postExchange)) {	
 			arbitage.buyFilled( event.getnFilled() );
 			placeHedgeOrder( arbitage, event.getnFilled());
@@ -390,9 +395,11 @@ public class TradeExecutive {
 		
 		switch(hedgeExchange) {
 		case NYSE:
+			shouldReduceParticipation &= currentMarketParticipationRatio.compareTo( tradeExecutiveConfiguration.getMaximumNysePostingRatio() ) > 0;
+			break;
+		case TSE:
 			shouldReduceParticipation &= currentMarketParticipationRatio.compareTo( tradeExecutiveConfiguration.getMaxiumCdnBidPostingRatio() ) > 0;
 			break;
-			
 		default:
 			System.out.println( String.format("Unsupported hedge exchange:%s", hedgeExchange) );
 			shouldReduceParticipation = false;
